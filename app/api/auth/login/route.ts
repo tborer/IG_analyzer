@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   const normalizedEmail = email.trim().toLowerCase();
   const rows = await query<{ id: string; password_hash: string }>(
-    'select id, password_hash from users where email = $1',
+    'select id, password_hash from users where email = ?',
     [normalizedEmail]
   );
   const user = rows[0];

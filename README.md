@@ -8,7 +8,7 @@ photo order, bio feedback with a rewrite, and prioritized next actions.
 ## Stack
 
 - **Next.js 14** (App Router, TypeScript) — deploy target: Vercel
-- **Postgres** — any provider that gives you a `DATABASE_URL` (Neon, Supabase, Railway, etc.)
+- **Turso** (libSQL/SQLite) — `@libsql/client`
 - **Anthropic API** (`@anthropic-ai/sdk`) for the vision analysis
 - Custom lightweight auth (bcrypt + signed JWT session cookie) — no third-party auth
   service required, minimal data stored (email + password hash)
@@ -17,9 +17,17 @@ photo order, bio feedback with a rewrite, and prioritized next actions.
 
 ```bash
 npm install
-cp .env.example .env.local   # fill in DATABASE_URL, SESSION_SECRET, ANTHROPIC_API_KEY
-npm run db:init              # applies schema.sql to your DATABASE_URL
+cp .env.example .env.local   # fill in TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, SESSION_SECRET, ANTHROPIC_API_KEY
+npm run db:init              # applies schema.sql to your Turso database
 npm run dev
+```
+
+Create the Turso database first if you haven't:
+
+```bash
+turso db create ig-analyzer
+turso db show ig-analyzer --url       # -> TURSO_DATABASE_URL
+turso db tokens create ig-analyzer    # -> TURSO_AUTH_TOKEN
 ```
 
 Generate a `SESSION_SECRET` with `openssl rand -base64 32`.
@@ -29,7 +37,7 @@ Generate a `SESSION_SECRET` with `openssl rand -base64 32`.
 Two tables, defined in `schema.sql`:
 
 - `users` — id, email, password_hash, created_at
-- `audits` — id, user_id, bio_text, photo_count, result (jsonb), created_at
+- `audits` — id, user_id, bio_text, photo_count, result (json text), created_at
 
 Photos themselves are **not** stored — they're sent to the Anthropic API for
 analysis and discarded. Only the generated JSON result is persisted, keeping
@@ -39,8 +47,9 @@ the DB footprint intentionally small.
 
 1. Push this repo to GitHub.
 2. Import it into Vercel.
-3. Add the three env vars from `.env.example` in the Vercel project settings.
-4. Run `npm run db:init` once (locally, pointed at your production `DATABASE_URL`)
+3. Add the four env vars from `.env.example` in the Vercel project settings
+   (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`).
+4. Run `npm run db:init` once (locally, pointed at your production Turso database)
    to create the tables before first use.
 
 ## Where to go next

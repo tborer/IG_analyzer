@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { hashPassword, createSessionToken, SESSION_COOKIE, sessionCookieOptions } from '@/lib/auth';
@@ -16,17 +17,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const existing = await query('select id from users where email = $1', [normalizedEmail]);
+  const existing = await query('select id from users where email = ?', [normalizedEmail]);
   if (existing.length > 0) {
     return NextResponse.json({ error: 'An account with that email already exists.' }, { status: 409 });
   }
 
   const passwordHash = await hashPassword(password);
-  const rows = await query<{ id: string }>(
-    'insert into users (email, password_hash) values ($1, $2) returning id',
-    [normalizedEmail, passwordHash]
-  );
-  const userId = rows[0].id;
+  const userId = randomUUID();
+  await query('insert into users (id, email, password_hash) values (?, ?, ?)', [
+    userId,
+    normalizedEmail,
+    passwordHash,
+  ]);
 
   const token = await createSessionToken(userId);
   const res = NextResponse.json({ ok: true });

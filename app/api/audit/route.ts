@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import { query } from '@/lib/db';
@@ -56,8 +57,8 @@ export async function POST(req: NextRequest) {
 
   try {
     await query(
-      'insert into audits (user_id, bio_text, photo_count, result) values ($1, $2, $3, $4)',
-      [userId, bioText ?? null, photos.length, JSON.stringify(result)]
+      'insert into audits (id, user_id, bio_text, photo_count, result) values (?, ?, ?, ?, ?)',
+      [randomUUID(), userId, bioText ?? null, photos.length, JSON.stringify(result)]
     );
   } catch (err) {
     // Don't fail the response if persistence fails — the user still gets their result.

@@ -1,27 +1,30 @@
-// Applies schema.sql against process.env.DATABASE_URL.
-// Usage: DATABASE_URL=postgres://... npm run db:init
+// Applies schema.sql against your Turso database.
+// Usage: TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... npm run db:init
 import { readFileSync } from 'node:fs';
-import pg from 'pg';
+import { createClient } from '@libsql/client';
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error('Missing DATABASE_URL env var.');
+const url = process.env.TURSO_DATABASE_URL;
+const authToken = process.env.TURSO_AUTH_TOKEN;
+if (!url) {
+  console.error('Missing TURSO_DATABASE_URL env var.');
   process.exit(1);
 }
 
 const sql = readFileSync(new URL('../schema.sql', import.meta.url), 'utf8');
-const client = new pg.Client({
-  connectionString,
-  ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
-});
+const client = createClient({ url, authToken });
 
 try {
-  await client.connect();
-  await client.query(sql);
+  const statements = sql
+    .split(';')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for (const statement of statements) {
+    await client.execute(statement);
+  }
   console.log('Schema applied successfully.');
 } catch (err) {
   console.error('Failed to apply schema:', err);
   process.exit(1);
 } finally {
-  await client.end();
+  client.close();
 }
