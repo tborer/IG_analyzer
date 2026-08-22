@@ -5,7 +5,8 @@ import { query } from '@/lib/db';
 import { runProfileAudit, PhotoInput } from '@/lib/anthropic';
 
 const MAX_PHOTOS = 8;
-const MAX_BYTES = 8 * 1024 * 1024; // 8MB per photo
+const MAX_BYTES = 8 * 1024 * 1024; // 8MB per-photo safety ceiling
+const MAX_TOTAL_BYTES = 4 * 1024 * 1024; // stay under Vercel's Route Handler request-body ceiling
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export async function POST(req: NextRequest) {
@@ -24,6 +25,13 @@ export async function POST(req: NextRequest) {
   }
   if (fileEntries.length > MAX_PHOTOS) {
     return NextResponse.json({ error: `Max ${MAX_PHOTOS} photos per audit.` }, { status: 400 });
+  }
+  const totalBytes = fileEntries.reduce((sum, f) => sum + f.size, 0);
+  if (totalBytes > MAX_TOTAL_BYTES) {
+    return NextResponse.json(
+      { error: 'Total upload is too large. Remove a photo or two and try again.' },
+      { status: 413 }
+    );
   }
 
   const photos: PhotoInput[] = [];

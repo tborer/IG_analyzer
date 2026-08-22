@@ -59,5 +59,3 @@ the DB footprint intentionally small.
 - Add a history view on `/dashboard` that lists past audits from the `audits` table.
 - Swap the bcrypt/JWT auth for NextAuth/Auth.js if you want OAuth providers later —
   the `users` table is compatible with that migration.
-- Add image compression/resizing client-side before upload to cut upload size and
-  API cost.

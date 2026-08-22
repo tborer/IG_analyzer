@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import { z } from 'zod';
 
 let client: Anthropic | null = null;
 function getClient() {
@@ -15,24 +17,30 @@ export type PhotoInput = {
   base64: string;
 };
 
-export type AuditResult = {
-  overallScore: number;
-  headline: string;
-  photos: Array<{
-    index: number;
-    score: number;
-    strengths: string[];
-    issues: string[];
-    verdict: 'lead' | 'keep' | 'cut' | 'replace';
-  }>;
-  recommendedOrder: number[];
-  bio: {
-    score: number;
-    feedback: string;
-    rewriteSuggestion: string;
-  } | null;
-  topActions: string[];
-};
+const PhotoAuditSchema = z.object({
+  index: z.number().int(),
+  score: z.number(),
+  strengths: z.array(z.string()),
+  issues: z.array(z.string()),
+  verdict: z.enum(['lead', 'keep', 'cut', 'replace']),
+});
+
+const AuditResultSchema = z.object({
+  overallScore: z.number(),
+  headline: z.string(),
+  photos: z.array(PhotoAuditSchema),
+  recommendedOrder: z.array(z.number().int()),
+  bio: z
+    .object({
+      score: z.number(),
+      feedback: z.string(),
+      rewriteSuggestion: z.string(),
+    })
+    .nullable(),
+  topActions: z.array(z.string()),
+});
+
+export type AuditResult = z.infer<typeof AuditResultSchema>;
 
 const SYSTEM_PROMPT = `You are a professional photography and self-presentation consultant \
 reviewing a set of photos someone is considering for a dating profile or social profile, \
@@ -55,23 +63,8 @@ For the bio (if provided), evaluate clarity, personality, authenticity, grammar,
 gives someone an easy, genuine way to start a conversation. Never suggest exaggeration or \
 factually false claims.
 
-Respond with ONLY valid JSON (no markdown fences, no commentary) matching exactly this shape:
-{
-  "overallScore": number (0-100),
-  "headline": string (one sentence, direct verdict),
-  "photos": [
-    {
-      "index": number (0-based, matching input order),
-      "score": number (0-100),
-      "strengths": string[] (0-3 items),
-      "issues": string[] (0-3 items),
-      "verdict": "lead" | "keep" | "cut" | "replace"
-    }
-  ],
-  "recommendedOrder": number[] (photo indices in the order they should appear, best lead photo first),
-  "bio": { "score": number, "feedback": string, "rewriteSuggestion": string } or null if no bio was given,
-  "topActions": string[] (3-5 prioritized, concrete next steps)
-}`;
+Score every photo in the input, in order, with "index" matching its 0-based position in the \
+input. "recommendedOrder" lists those same indices reordered best-lead-photo-first.`;
 
 export async function runProfileAudit(
   photos: PhotoInput[],
@@ -84,7 +77,7 @@ export async function runProfileAudit(
       type: 'text',
       text: `Here are ${photos.length} candidate photo(s), in the order provided (index 0, 1, 2, ...). ${
         bioText ? 'A bio is also included below.' : 'No bio was provided.'
-      } Return the JSON audit now.${bioText ? `\n\nBIO:\n${bioText}` : ''}`,
+      } Return the audit now.${bioText ? `\n\nBIO:\n${bioText}` : ''}`,
     },
     ...photos.map((p) => ({
       type: 'image' as const,
@@ -96,24 +89,16 @@ export async function runProfileAudit(
     })),
   ];
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
+  const response = await anthropic.messages.parse({
+    model: 'claude-sonnet-5',
     max_tokens: 4000,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userContent }],
+    output_config: { format: zodOutputFormat(AuditResultSchema) },
   });
 
-  const textBlock = response.content.find((b) => b.type === 'text');
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('Model returned no text content.');
+  if (!response.parsed_output) {
+    throw new Error('Model returned output that did not match the expected schema.');
   }
-
-  const cleaned = textBlock.text.trim().replace(/^```json\s*|\s*```$/g, '');
-  let parsed: AuditResult;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch (err) {
-    throw new Error('Failed to parse model output as JSON: ' + (err as Error).message);
-  }
-  return parsed;
+  return response.parsed_output;
 }
