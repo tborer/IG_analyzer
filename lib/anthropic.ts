@@ -39,6 +39,19 @@ export const PROFILE_COVERAGE_ASPECTS = [
   'Video or Reels content',
 ] as const;
 
+// Fixed set of well-documented bio status-killers. Same closed-list
+// rationale as PHOTO_ARCHETYPES -- consistent checking, stable UI rendering.
+export const BIO_RED_FLAGS = [
+  'Quotes (philosophers, rappers, "king/queen" phrasing)',
+  'Height, age, or zodiac sign',
+  'Mile counts or fitness stats',
+  'Unverifiable titles ("Entrepreneur/CEO/Visionary" with no evidence)',
+  '"DM for collab" without an audience to justify it',
+  '"Don\'t DM me unless you\'re serious"',
+  'Religious or political signaling',
+  'Availability language ("Single," "DTF," "looking for my person")',
+] as const;
+
 const CoverageAspectSchema = z.object({
   aspect: z.string(),
   covered: z.boolean(),
@@ -49,6 +62,12 @@ const ArchetypeCoverageSchema = z.object({
   archetype: z.string(),
   covered: z.boolean(),
   recommendation: z.string(),
+});
+
+const BioRedFlagSchema = z.object({
+  flag: z.string(),
+  present: z.boolean(),
+  note: z.string(),
 });
 
 const PhotoAuditSchema = z.object({
@@ -66,11 +85,18 @@ const ScoredNotesSchema = z.object({
   notes: z.array(z.string()),
 });
 
+const DisplayNameSchema = z.object({
+  value: z.string(),
+  usesRealName: z.boolean(),
+  note: z.string(),
+});
+
 const AuditResultSchema = z.object({
   overallScore: z.number(),
   headline: z.string(),
   profileCoverage: z.array(CoverageAspectSchema),
   profileHeader: ScoredNotesSchema.nullable(),
+  displayName: DisplayNameSchema.nullable(),
   gridCohesion: ScoredNotesSchema.nullable(),
   photos: z.array(PhotoAuditSchema),
   recommendedOrder: z.array(z.number().int()),
@@ -80,6 +106,7 @@ const AuditResultSchema = z.object({
       score: z.number(),
       feedback: z.string(),
       rewriteSuggestion: z.string(),
+      redFlags: z.array(BioRedFlagSchema),
     })
     .nullable(),
   contentStrategy: z.array(z.string()),
@@ -143,11 +170,27 @@ photo present — add one in good lighting; its absence is one of the most commo
 reasons a profile reads as withholding information").
 
 STEP 3 — PROFILE-LEVEL REVIEW
+If a display name (separate from the @handle) is visible: report its exact value and \
+whether it reads as a real first-and-last name versus a handle repeat or a \
+nickname/emoji stack (e.g. "Johnny 🔥King🔥"). A real name reads as higher status; \
+recommend switching to one if it isn't already.
+
 If the bio/header is visible: assess clarity, personality, authenticity, grammar, and \
 specifically whether it reads as generic filler ("love to laugh, travel, and eat good \
 food") versus specific and conversation-starting. Rewrite it using concrete, \
 individual detail rather than vague claims. Never suggest exaggeration or factually \
 false claims.
+
+Also check the bio against exactly this fixed set of well-documented status-killers, \
+reporting each as present or not: "Quotes (philosophers, rappers, \"king/queen\" \
+phrasing)", "Height, age, or zodiac sign", "Mile counts or fitness stats", \
+"Unverifiable titles (\"Entrepreneur/CEO/Visionary\" with no evidence)", "\"DM for \
+collab\" without an audience to justify it", "\"Don't DM me unless you're serious\"", \
+"Religious or political signaling", "Availability language (\"Single,\" \"DTF,\" \
+\"looking for my person\")". Each of these reads as a status signal working against \
+the profile owner, not for them — when present, say so plainly and recommend cutting \
+it, not softening it.
+
 If a grid/feed overview is visible: assess visual cohesion (palette, tone), \
 content-type variety, and whether the sequence supports a strong first impression.
 If individual posts with captions are visible: note caption quality and any \
@@ -163,7 +206,16 @@ subject of this audit — ignore them.
 
 Score every photo in the input, in order, with "index" matching its 0-based position \
 in the input. "recommendedOrder" lists those same indices reordered \
-best-photo-to-feature-first.`;
+best-photo-to-feature-first.
+
+PRIORITIZATION FOR topActions
+The photo set does most of the work; the bio and header exist mainly not to undercut \
+it. Order topActions by actual leverage, not by giving every category equal billing: \
+if photo/archetype coverage is significantly weaker than the bio (missing archetypes, \
+a weak or ambiguous lead photo), photo fixes must come before bio wordsmithing in the \
+list, and one of the actions should say so directly — a polished bio cannot compensate \
+for a weak or incomplete photo set. Only lead with bio fixes when the photo set is \
+already solid and the bio is the clearest remaining gap.`;
 
 export async function runProfileAudit(
   photos: PhotoInput[],
@@ -193,7 +245,7 @@ export async function runProfileAudit(
 
   const response = await anthropic.messages.parse({
     model: 'claude-sonnet-5',
-    max_tokens: 6000,
+    max_tokens: 7000,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userContent }],
     output_config: { format: zodOutputFormat(AuditResultSchema) },

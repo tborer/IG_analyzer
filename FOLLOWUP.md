@@ -67,7 +67,32 @@ deferred; check items off (or delete the line) once shipped.
 
 ## Product
 
-- [ ] **Instagram bio content-strategy research.** In progress
-  2026-08-24 — analyzing external dating-bio advice for concrete audit
-  features to add (bio formulas, hook patterns, etc.). See conversation/PR
-  history for findings once complete.
+Bio content-strategy research (2026-08-24, analyzing external dating-bio
+advice) shipped its high-value/low-effort findings the same day:
+`lib/anthropic.ts` now checks a fixed bio red-flag checklist (quotes,
+height/age/zodiac, unverifiable titles, availability language, etc.),
+audits the display name separately from the bio text (real name vs.
+handle-repeat/nickname), and explicitly prioritizes photo fixes over bio
+wordsmithing in `topActions` when the photo set is the bigger gap.
+
+Remaining findings from that research, not yet built:
+
+- [ ] **Bio archetype framework**, mirroring `PHOTO_ARCHETYPES` — classify
+  the bio against named formulas (Professional/Entrepreneur/Traveler/
+  Creative/Minimal: Role • City • Interest-style templates) and rewrite
+  toward the closest fit instead of a generic prose rewrite.
+- [ ] **Split the profile picture (avatar) from the header into its own
+  scored sub-check**, with its own named failure patterns (gym selfie,
+  sunglasses, ambiguous group crop) — sources say it's evaluated first and
+  weighted more heavily than any single grid photo, and `profileHeader`
+  currently bundles it in with the bio/link generically.
+- [ ] **Bio link quality check** — a link to a business/portfolio/press
+  feature helps; a generic Linktree or unrelated personal link hurts. We
+  don't look at bio links at all today.
+- [ ] **Deterministic emoji-density check** — regex-count emoji characters
+  vs. bio length as a hard metric, rather than leaving "too many emojis"
+  entirely to the model's qualitative judgment.
+- [ ] **Bio-staleness nudge**, using audit history we already store —
+  detect an unchanged bio across the last few audits and flag it ("a
+  dynamic bio signals an active life; a static one signals nothing's
+  happening").

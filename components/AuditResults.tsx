@@ -7,11 +7,17 @@ export type AuditResult = {
   headline: string;
   profileCoverage: { aspect: string; covered: boolean; note: string }[];
   profileHeader: { score: number; notes: string[] } | null;
+  displayName: { value: string; usesRealName: boolean; note: string } | null;
   gridCohesion: { score: number; notes: string[] } | null;
   photos: PhotoAudit[];
   recommendedOrder: number[];
   photoArchetypeCoverage: { archetype: string; covered: boolean; recommendation: string }[];
-  bio: { score: number; feedback: string; rewriteSuggestion: string } | null;
+  bio: {
+    score: number;
+    feedback: string;
+    rewriteSuggestion: string;
+    redFlags: { flag: string; present: boolean; note: string }[];
+  } | null;
   contentStrategy: string[];
   topActions: string[];
 };
@@ -73,6 +79,21 @@ export default function AuditResults({
       />
 
       {result.profileHeader && <ScoredNotesCard title="Profile bio & header" data={result.profileHeader} />}
+
+      {result.displayName && (
+        <div className="border border-hair rounded-lg bg-inkraised p-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="font-display text-lg text-bone">Display name</h2>
+            <span
+              className={`eyebrow ${result.displayName.usesRealName ? 'text-moss' : 'text-signal'}`}
+            >
+              "{result.displayName.value}"
+            </span>
+          </div>
+          <p className="text-sm text-bone/85">{result.displayName.note}</p>
+        </div>
+      )}
+
       {result.gridCohesion && <ScoredNotesCard title="Grid cohesion" data={result.gridCohesion} />}
 
       <div>
@@ -117,6 +138,18 @@ export default function AuditResults({
             {result.bio.rewriteSuggestion}
           </p>
         </div>
+      )}
+
+      {result.bio && result.bio.redFlags.length > 0 && (
+        <CoverageChecklist
+          title="Bio status-killers"
+          hint="Clean = not present"
+          items={result.bio.redFlags.map((r) => ({
+            label: r.flag,
+            covered: !r.present,
+            note: r.note,
+          }))}
+        />
       )}
 
       {result.contentStrategy.length > 0 && (
