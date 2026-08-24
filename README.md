@@ -7,7 +7,7 @@ photo order, bio feedback with a rewrite, and prioritized next actions.
 
 ## Stack
 
-- **Next.js 14** (App Router, TypeScript) — deploy target: Vercel
+- **Next.js 16** (App Router, TypeScript) — deploy target: Vercel
 - **Turso** (libSQL/SQLite) — `@libsql/client`
 - **Anthropic API** (`@anthropic-ai/sdk`) for the vision analysis
 - Custom lightweight auth (bcrypt + signed JWT session cookie) — no third-party auth
@@ -94,6 +94,3 @@ Turso or Anthropic credentials are needed to run them.
 - Login throttling / brute-force protection on `/api/auth/login`.
 - Swap the bcrypt/JWT auth for NextAuth/Auth.js if you want OAuth providers later —
   the `users` table is compatible with that migration.
-- Next.js is pinned to 14.2.35, which has several high-severity advisories
-  fixed only in Next 16 — a deliberate, separate, breaking-change upgrade,
-  not folded into other work.

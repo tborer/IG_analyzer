@@ -48,7 +48,8 @@ export const sessionCookieOptions = {
 
 /** Server Component helper — read-only. Use in pages/layouts to check auth. */
 export async function getCurrentUserId(): Promise<string | null> {
-  const token = cookies().get(SESSION_COOKIE)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   return verifySessionToken(token);
 }
