@@ -36,12 +36,34 @@ Generate a `SESSION_SECRET` with `openssl rand -base64 32`.
 
 Two tables, defined in `schema.sql`:
 
-- `users` — id, email, password_hash, created_at
+- `users` — id, email, password_hash, plan (`free` or `paid`), created_at
 - `audits` — id, user_id, bio_text, photo_count, result (json text), created_at
 
 Photos themselves are **not** stored — they're sent to the Anthropic API for
 analysis and discarded. Only the generated JSON result is persisted, keeping
 the DB footprint intentionally small.
+
+`plan` gates the daily audit cap (see below) and is set manually for now —
+there's no billing integration yet. To upgrade an account:
+
+```sql
+update users set plan = 'paid' where email = 'someone@example.com';
+```
+
+## Rate limiting
+
+`/api/audit` enforces a per-user daily cap based on `users.plan`: **1/day on
+free, 5/day on paid** (`lib/rate-limit.ts`). Exceeding it returns a 429 with
+a message telling the user when to come back. There's no separate login
+throttle yet.
+
+## Account
+
+- `/dashboard/history` lists past audits (headline, score, date) for the
+  signed-in user, newest first.
+- `/dashboard/settings` lets a signed-in user change their password (current
+  password required). There's no email-based "forgot password" flow —
+  losing your password currently means losing the account.
 
 ## Deploying
 
@@ -50,12 +72,28 @@ the DB footprint intentionally small.
 3. Add the four env vars from `.env.example` in the Vercel project settings
    (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`).
 4. Run `npm run db:init` once (locally, pointed at your production Turso database)
-   to create the tables before first use.
+   to create the tables before first use. Safe to re-run — it only adds
+   what's missing (e.g. the `plan` column) rather than erroring on existing tables.
+
+## Testing
+
+```bash
+npm test
+```
+
+Smoke tests (Vitest) cover the auth routes, change-password, the audit
+route's validation/rate-limit/persistence paths, and the core auth/rate-limit
+library functions. External calls (DB, Anthropic) are mocked — no live
+Turso or Anthropic credentials are needed to run them.
 
 ## Where to go next
 
-- Rate-limit `/api/audit` per user (e.g. Vercel KV or a `requests` table) before
-  opening this up publicly — vision API calls aren't free.
-- Add a history view on `/dashboard` that lists past audits from the `audits` table.
+- Email verification and a real "forgot password" flow (both need picking a
+  transactional email provider — deliberately deferred).
+- Real billing (Stripe or similar) to replace the manual `plan` flag.
+- Login throttling / brute-force protection on `/api/auth/login`.
 - Swap the bcrypt/JWT auth for NextAuth/Auth.js if you want OAuth providers later —
   the `users` table is compatible with that migration.
+- Next.js is pinned to 14.2.35, which has several high-severity advisories
+  fixed only in Next 16 — a deliberate, separate, breaking-change upgrade,
+  not folded into other work.

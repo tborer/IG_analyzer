@@ -21,6 +21,16 @@ try {
   for (const statement of statements) {
     await client.execute(statement);
   }
+
+  // `create table if not exists` above doesn't retrofit new columns onto a
+  // users table created by an older schema.sql -- add them here, once, if missing.
+  const columns = await client.execute('pragma table_info(users)');
+  const hasPlan = columns.rows.some((row) => row.name === 'plan');
+  if (!hasPlan) {
+    await client.execute("alter table users add column plan text not null default 'free'");
+    console.log('Added missing `plan` column to users.');
+  }
+
   console.log('Schema applied successfully.');
 } catch (err) {
   console.error('Failed to apply schema:', err);

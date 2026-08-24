@@ -5,6 +5,7 @@ create table if not exists users (
   id text primary key,
   email text unique not null,
   password_hash text not null,
+  plan text not null default 'free',
   created_at text not null default (datetime('now'))
 );
 

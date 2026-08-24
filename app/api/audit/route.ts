@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { runProfileAudit, PhotoInput } from '@/lib/anthropic';
+import { dailyAuditLimit, getAuditsUsedToday, getUserPlan } from '@/lib/rate-limit';
 
 const MAX_PHOTOS = 12;
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB per-photo safety ceiling
@@ -14,6 +15,21 @@ export async function POST(req: NextRequest) {
   const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json({ error: 'Sign in to run an audit.' }, { status: 401 });
+  }
+
+  const plan = await getUserPlan(userId);
+  const limit = dailyAuditLimit(plan);
+  const usedToday = await getAuditsUsedToday(userId);
+  if (usedToday >= limit) {
+    return NextResponse.json(
+      {
+        error:
+          plan === 'paid'
+            ? `You've used all ${limit} audits for today. Try again tomorrow.`
+            : `You've used your free audit for today (${limit}/day on the free plan). Try again tomorrow or upgrade for more.`,
+      },
+      { status: 429 }
+    );
   }
 
   const form = await req.formData();

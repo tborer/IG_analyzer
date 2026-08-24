@@ -17,9 +17,20 @@ export default function DashboardNav() {
       <Link href="/" className="font-display text-lg tracking-tight">
         Dossier
       </Link>
-      <button onClick={logout} className="eyebrow text-mist hover:text-bone transition-colors">
-        Log out
-      </button>
+      <nav className="flex items-center gap-6">
+        <Link href="/dashboard" className="eyebrow text-mist hover:text-bone transition-colors">
+          New audit
+        </Link>
+        <Link href="/dashboard/history" className="eyebrow text-mist hover:text-bone transition-colors">
+          History
+        </Link>
+        <Link href="/dashboard/settings" className="eyebrow text-mist hover:text-bone transition-colors">
+          Settings
+        </Link>
+        <button onClick={logout} className="eyebrow text-mist hover:text-bone transition-colors">
+          Log out
+        </button>
+      </nav>
     </header>
   );
 }
