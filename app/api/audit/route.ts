@@ -4,10 +4,11 @@ import { getCurrentUserId } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { runProfileAudit, PhotoInput } from '@/lib/anthropic';
 
-const MAX_PHOTOS = 8;
+const MAX_PHOTOS = 12;
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB per-photo safety ceiling
 const MAX_TOTAL_BYTES = 4 * 1024 * 1024; // stay under Vercel's Route Handler request-body ceiling
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const DEFAULT_PLATFORM = 'Instagram';
 
 export async function POST(req: NextRequest) {
   const userId = await getCurrentUserId();
@@ -19,6 +20,11 @@ export async function POST(req: NextRequest) {
   const fileEntries = form.getAll('photos').filter((f): f is File => f instanceof File);
   const bio = form.get('bio');
   const bioText = typeof bio === 'string' && bio.trim() ? bio.trim().slice(0, 600) : undefined;
+  const platformRaw = form.get('platform');
+  const platform =
+    typeof platformRaw === 'string' && platformRaw.trim()
+      ? platformRaw.trim().slice(0, 40)
+      : DEFAULT_PLATFORM;
 
   if (fileEntries.length === 0) {
     return NextResponse.json({ error: 'Add at least one photo.' }, { status: 400 });
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
 
   let result;
   try {
-    result = await runProfileAudit(photos, bioText);
+    result = await runProfileAudit(photos, bioText, platform);
   } catch (err) {
     console.error('Audit generation failed:', err);
     return NextResponse.json(

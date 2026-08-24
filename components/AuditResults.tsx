@@ -1,14 +1,45 @@
 import ScoreDial from './ScoreDial';
 import PhotoAuditCard, { PhotoAudit } from './PhotoAuditCard';
+import CoverageChecklist from './CoverageChecklist';
 
 export type AuditResult = {
   overallScore: number;
   headline: string;
+  profileCoverage: { aspect: string; covered: boolean; note: string }[];
+  profileHeader: { score: number; notes: string[] } | null;
+  gridCohesion: { score: number; notes: string[] } | null;
   photos: PhotoAudit[];
   recommendedOrder: number[];
+  photoArchetypeCoverage: { archetype: string; covered: boolean; recommendation: string }[];
   bio: { score: number; feedback: string; rewriteSuggestion: string } | null;
+  contentStrategy: string[];
   topActions: string[];
 };
+
+function ScoredNotesCard({
+  title,
+  data,
+}: {
+  title: string;
+  data: { score: number; notes: string[] };
+}) {
+  return (
+    <div className="border border-hair rounded-lg bg-inkraised p-6">
+      <div className="flex items-center gap-4 mb-4">
+        <ScoreDial score={data.score} size={56} />
+        <h2 className="font-display text-lg text-bone">{title}</h2>
+      </div>
+      <ul className="text-sm text-bone/85 space-y-2">
+        {data.notes.map((note, i) => (
+          <li key={i} className="flex gap-2">
+            <span className="text-brass">·</span>
+            <span>{note}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function AuditResults({
   result,
@@ -18,6 +49,8 @@ export default function AuditResults({
   previewUrls: string[];
 }) {
   const byIndex = new Map(result.photos.map((p) => [p.index, p]));
+  const scoredPhotos = new Set(result.photos.map((p) => p.index));
+  const unscoredCount = previewUrls.length - scoredPhotos.size;
 
   return (
     <div className="space-y-10">
@@ -29,11 +62,29 @@ export default function AuditResults({
         </div>
       </div>
 
+      <CoverageChecklist
+        title="What this audit could see"
+        hint="Add what's missing for a fuller picture"
+        items={result.profileCoverage.map((c) => ({
+          label: c.aspect,
+          covered: c.covered,
+          note: c.note,
+        }))}
+      />
+
+      {result.profileHeader && <ScoredNotesCard title="Profile bio & header" data={result.profileHeader} />}
+      {result.gridCohesion && <ScoredNotesCard title="Grid cohesion" data={result.gridCohesion} />}
+
       <div>
         <div className="flex items-baseline justify-between mb-4">
-          <h2 className="font-display text-lg text-bone">Recommended order</h2>
-          <span className="eyebrow text-mist">Best lead photo first</span>
+          <h2 className="font-display text-lg text-bone">Photos to feature</h2>
+          <span className="eyebrow text-mist">Best first</span>
         </div>
+        {unscoredCount > 0 && (
+          <p className="text-sm text-signal mb-4">
+            {unscoredCount} photo{unscoredCount > 1 ? 's' : ''} couldn't be scored — try re-running the audit.
+          </p>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {result.recommendedOrder.map((idx, rank) => {
             const audit = byIndex.get(idx);
@@ -43,6 +94,16 @@ export default function AuditResults({
           })}
         </div>
       </div>
+
+      <CoverageChecklist
+        title="Photo archetypes"
+        hint="Proven dating-profile shot types"
+        items={result.photoArchetypeCoverage.map((a) => ({
+          label: a.archetype,
+          covered: a.covered,
+          note: a.recommendation,
+        }))}
+      />
 
       {result.bio && (
         <div className="border border-hair rounded-lg bg-inkraised p-6">
@@ -55,6 +116,20 @@ export default function AuditResults({
           <p className="text-sm text-bone/90 font-body italic border-l-2 border-brass/50 pl-4">
             {result.bio.rewriteSuggestion}
           </p>
+        </div>
+      )}
+
+      {result.contentStrategy.length > 0 && (
+        <div className="border border-hair rounded-lg bg-inkraised p-6">
+          <h2 className="font-display text-lg text-bone mb-4">Content strategy</h2>
+          <ul className="text-sm text-bone/85 space-y-2">
+            {result.contentStrategy.map((note, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="text-brass">·</span>
+                <span>{note}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

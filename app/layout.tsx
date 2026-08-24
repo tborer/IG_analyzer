@@ -26,7 +26,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: 'Dossier — Profile Audit',
   description:
-    'An honest, specific audit of your dating profile photos and bio — scored, ranked, and explained.',
+    'An honest, specific audit of your existing Instagram, TikTok, or other social profile — photo by photo, scored and explained, with what to add next.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

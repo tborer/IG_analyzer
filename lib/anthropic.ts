@@ -17,19 +17,64 @@ export type PhotoInput = {
   base64: string;
 };
 
+// Fixed set of well-established dating-profile photo archetypes. Kept as a
+// closed list (rather than free text) so coverage can be checked off
+// consistently across audits and rendered as a stable checklist in the UI.
+export const PHOTO_ARCHETYPES = [
+  'Solo close-up (face clarity)',
+  'Full body',
+  'Social / with others',
+  'Activity or hobby',
+  'Travel or adventure',
+  'Candid / genuine expression',
+  'Pet',
+  'Style or professional',
+] as const;
+
+export const PROFILE_COVERAGE_ASPECTS = [
+  'Profile bio / header',
+  'Grid or feed overview',
+  'Individual posts with captions',
+  'Highlights or pinned content',
+  'Video or Reels content',
+] as const;
+
+const CoverageAspectSchema = z.object({
+  aspect: z.string(),
+  covered: z.boolean(),
+  note: z.string(),
+});
+
+const ArchetypeCoverageSchema = z.object({
+  archetype: z.string(),
+  covered: z.boolean(),
+  recommendation: z.string(),
+});
+
 const PhotoAuditSchema = z.object({
   index: z.number().int(),
   score: z.number(),
+  archetype: z.string(),
   strengths: z.array(z.string()),
   issues: z.array(z.string()),
-  verdict: z.enum(['lead', 'keep', 'cut', 'replace']),
+  datingSignal: z.string(),
+  verdict: z.enum(['feature', 'keep', 'refresh', 'retire']),
+});
+
+const ScoredNotesSchema = z.object({
+  score: z.number(),
+  notes: z.array(z.string()),
 });
 
 const AuditResultSchema = z.object({
   overallScore: z.number(),
   headline: z.string(),
+  profileCoverage: z.array(CoverageAspectSchema),
+  profileHeader: ScoredNotesSchema.nullable(),
+  gridCohesion: ScoredNotesSchema.nullable(),
   photos: z.array(PhotoAuditSchema),
   recommendedOrder: z.array(z.number().int()),
+  photoArchetypeCoverage: z.array(ArchetypeCoverageSchema),
   bio: z
     .object({
       score: z.number(),
@@ -37,47 +82,104 @@ const AuditResultSchema = z.object({
       rewriteSuggestion: z.string(),
     })
     .nullable(),
+  contentStrategy: z.array(z.string()),
   topActions: z.array(z.string()),
 });
 
 export type AuditResult = z.infer<typeof AuditResultSchema>;
 
-const SYSTEM_PROMPT = `You are a professional photography and self-presentation consultant \
-reviewing a set of photos someone is considering for a dating profile or social profile, \
-along with an optional bio. You give the kind of honest, specific, constructive feedback a \
-skilled portrait photographer or image consultant would give a paying client.
+const SYSTEM_PROMPT = `You are two experts working together on one profile audit:
 
-Evaluate each photo on legitimate, well-established factors: lighting quality, composition \
-and framing, image resolution/blur, background clarity and clutter, genuineness of \
-expression, whether the subject is clearly identifiable (flag group photos, sunglasses, or \
-photos taken from too far away), variety across the set (avoid recommending near-duplicates), \
-grooming and clothing fit/presentation, and whether the photo communicates something authentic \
-about the person (an activity, setting, or context) versus a generic mirror selfie.
+1. An online dating profile coach who has reviewed thousands of dating and social \
+profiles and knows, from well-established practitioner experience, what photo \
+choices and bios actually generate more matches and conversations.
+2. A social media strategist who understands how content performs on platforms like \
+Instagram, TikTok, and similar apps — grid cohesion, posting variety, caption and \
+hashtag effectiveness.
 
-Do not suggest manipulation, deception, staging false lifestyle signals, or misleading crops. \
-Do not comment on body type, race, or other protected characteristics beyond what's needed for \
-neutral photography feedback (e.g. lighting on skin tone, focus). Keep every note specific and \
-actionable, never generic ("looks great!" is not useful).
+You're auditing screenshots of someone's OWN existing, live profile — not candidate \
+photos before posting. Everything you see has already been posted by the account \
+owner; your job is to tell them how to improve what's there and what to add.
 
-For the bio (if provided), evaluate clarity, personality, authenticity, grammar, and whether it \
-gives someone an easy, genuine way to start a conversation. Never suggest exaggeration or \
-factually false claims.
+INPUT
+You'll receive screenshots in no particular order or category — they may include the \
+profile header/bio, a grid or feed overview, individual posts, highlights, or nothing \
+but a handful of photos. Figure out from the images themselves what each one shows. \
+The user will also tell you which platform this is.
 
-Score every photo in the input, in order, with "index" matching its 0-based position in the \
-input. "recommendedOrder" lists those same indices reordered best-lead-photo-first.`;
+STEP 1 — COVERAGE CHECK
+Before scoring anything, assess what you can and can't evaluate from what was \
+provided. Report on each of exactly these five aspects: "Profile bio / header", \
+"Grid or feed overview", "Individual posts with captions", "Highlights or pinned \
+content", "Video or Reels content". For anything not visible in the screenshots, say \
+so plainly and explain why it matters for the audit — don't guess or invent detail \
+you can't see.
+
+STEP 2 — PHOTO-BY-PHOTO DATING ANALYSIS
+For every photo, classify it against exactly this fixed set of proven dating-profile \
+photo archetypes: "Solo close-up (face clarity)", "Full body", "Social / with \
+others", "Activity or hobby", "Travel or adventure", "Candid / genuine expression", \
+"Pet", "Style or professional". Then separately assess:
+- Legitimate photography fundamentals: lighting, focus, composition, background clarity.
+- Dating-specific attraction signals: is the subject clearly, unambiguously \
+identifiable (flag group photos where it's unclear who the profile owner is, \
+sunglasses/hats obscuring the face, photos taken from too far away); genuine vs. \
+posed/forced expression; eye contact and warmth; whether the photo reads as authentic \
+(a real moment or activity) versus generic (mirror selfie, bathroom selfie, \
+low-effort screenshot).
+
+Common, well-documented failure patterns to flag when present: the lead photo not \
+being a clear solo shot, an entire set that's all the same setting/outfit (no \
+variety), a set with no full-body photo (a frequent, correctable reason profiles \
+underperform), heavy filtering that reads as inauthentic, a group photo used as the \
+lead image, and photos that look noticeably dated or inconsistent with the rest of \
+the set.
+
+Then, using that same archetype checklist, report which of the eight archetypes ARE \
+represented in the existing photo set and which are MISSING — for each missing \
+archetype, give a concrete, specific recommendation for a new photo to add (not just \
+"add more variety" — say what kind of shot and why it would help, e.g. "no full-body \
+photo present — add one in good lighting; its absence is one of the most common \
+reasons a profile reads as withholding information").
+
+STEP 3 — PROFILE-LEVEL REVIEW
+If the bio/header is visible: assess clarity, personality, authenticity, grammar, and \
+specifically whether it reads as generic filler ("love to laugh, travel, and eat good \
+food") versus specific and conversation-starting. Rewrite it using concrete, \
+individual detail rather than vague claims. Never suggest exaggeration or factually \
+false claims.
+If a grid/feed overview is visible: assess visual cohesion (palette, tone), \
+content-type variety, and whether the sequence supports a strong first impression.
+If individual posts with captions are visible: note caption quality and any \
+posting-cadence or hashtag patterns worth calling out as part of contentStrategy.
+
+GUARDRAILS
+Do not suggest manipulation, deception, staging false lifestyle signals, or \
+misleading crops. Do not comment on body type, race, or other protected \
+characteristics beyond neutral photography feedback (e.g. lighting on skin tone, \
+focus). Every note must be specific and actionable — "looks great!" is not a usable \
+note. Third-party names or details visible in comments from other people are not the \
+subject of this audit — ignore them.
+
+Score every photo in the input, in order, with "index" matching its 0-based position \
+in the input. "recommendedOrder" lists those same indices reordered \
+best-photo-to-feature-first.`;
 
 export async function runProfileAudit(
   photos: PhotoInput[],
-  bioText: string | undefined
+  bioText: string | undefined,
+  platform: string
 ): Promise<AuditResult> {
   const anthropic = getClient();
 
   const userContent: Anthropic.MessageParam['content'] = [
     {
       type: 'text',
-      text: `Here are ${photos.length} candidate photo(s), in the order provided (index 0, 1, 2, ...). ${
-        bioText ? 'A bio is also included below.' : 'No bio was provided.'
-      } Return the audit now.${bioText ? `\n\nBIO:\n${bioText}` : ''}`,
+      text: `Platform: ${platform}. Here are ${photos.length} screenshot(s) from this account's existing, live profile, in the order provided (index 0, 1, 2, ...). ${
+        bioText
+          ? 'Additional bio/caption text pasted by the user is included below for extra context.'
+          : 'No additional bio/caption text was provided beyond what is visible in the screenshots.'
+      } Return the audit now.${bioText ? `\n\nADDITIONAL TEXT CONTEXT:\n${bioText}` : ''}`,
     },
     ...photos.map((p) => ({
       type: 'image' as const,
@@ -91,7 +193,7 @@ export async function runProfileAudit(
 
   const response = await anthropic.messages.parse({
     model: 'claude-sonnet-5',
-    max_tokens: 4000,
+    max_tokens: 6000,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userContent }],
     output_config: { format: zodOutputFormat(AuditResultSchema) },

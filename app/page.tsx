@@ -23,12 +23,13 @@ export default function LandingPage() {
         <div className="flex-1">
           <p className="eyebrow text-brass mb-4">Profile audit</p>
           <h1 className="font-display text-4xl sm:text-5xl leading-[1.1] mb-6">
-            An honest read on the photos you're about to post.
+            An honest read on the profile you've already posted.
           </h1>
           <p className="text-bone/75 text-lg leading-relaxed mb-8 max-w-lg">
-            Upload your candidate photos and bio. Get a specific, photo-by-photo
-            breakdown — what's working, what isn't, which shot should lead, and why —
-            instead of a friend saying "yeah looks good."
+            Screenshot your Instagram, TikTok, or other profile — photos may live on the
+            platform, not your device, and that's fine. Get a specific, photo-by-photo
+            breakdown — what's working, what to fix, what kind of photo you're missing
+            entirely — instead of a friend saying "yeah looks good."
           </p>
           <Link
             href="/signup"
@@ -47,18 +48,18 @@ export default function LandingPage() {
         {[
           {
             n: '01',
-            title: 'Per-photo scoring',
-            body: 'Lighting, composition, background, and expression, graded individually — not a single vague number.',
+            title: 'Dating-photo logic, not just "looks nice"',
+            body: 'Every photo scored against proven dating-profile archetypes — and told what type you\'re missing entirely.',
           },
           {
             n: '02',
-            title: 'Lead photo, ranked set',
-            body: 'A recommended order for your whole set, not just a pass/fail on one shot.',
+            title: 'What the audit could actually see',
+            body: 'A coverage check on your bio, grid, posts, and highlights — so you know what to add for a fuller picture.',
           },
           {
             n: '03',
-            title: 'Bio, reviewed too',
-            body: 'Clarity and authenticity feedback, plus a rewritten version you can actually use.',
+            title: 'Bio and content strategy, reviewed too',
+            body: 'Copywriting feedback plus posting-cadence and hashtag notes, grounded in what actually drives engagement.',
           },
         ].map((item) => (
           <div key={item.n}>

@@ -4,9 +4,11 @@ import VerdictBadge from './VerdictBadge';
 export type PhotoAudit = {
   index: number;
   score: number;
+  archetype: string;
   strengths: string[];
   issues: string[];
-  verdict: 'lead' | 'keep' | 'cut' | 'replace';
+  datingSignal: string;
+  verdict: 'feature' | 'keep' | 'refresh' | 'retire';
 };
 
 export default function PhotoAuditCard({
@@ -31,9 +33,13 @@ export default function PhotoAuditCard({
       </div>
       <div className="p-4 flex flex-col gap-3 flex-1">
         <div className="flex items-start justify-between gap-3">
-          <VerdictBadge verdict={audit.verdict} />
+          <div className="flex flex-col gap-1.5 items-start">
+            <VerdictBadge verdict={audit.verdict} />
+            <span className="eyebrow text-mist">{audit.archetype}</span>
+          </div>
           <ScoreDial score={audit.score} size={56} />
         </div>
+        <p className="text-sm text-bone/85 italic">{audit.datingSignal}</p>
         {audit.strengths.length > 0 && (
           <div>
             <p className="eyebrow text-moss mb-1">Working</p>
