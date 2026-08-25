@@ -92,7 +92,10 @@ describe('POST /api/audit', () => {
     vi.mocked(getCurrentUserId).mockResolvedValueOnce('user-1');
     await allowRateLimit();
     const fakeResult = { overallScore: 80, headline: 'Solid set' };
-    vi.mocked(runProfileAudit).mockResolvedValueOnce(fakeResult as never);
+    vi.mocked(runProfileAudit).mockResolvedValueOnce({
+      result: fakeResult,
+      transcribedBio: null,
+    } as never);
     vi.mocked(query).mockResolvedValueOnce([]);
     const { POST } = await import('@/app/api/audit/route');
 
@@ -103,7 +106,7 @@ describe('POST /api/audit', () => {
     const res = await POST(formRequest(form));
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual(fakeResult);
+    expect(await res.json()).toEqual({ ...fakeResult, bioStaleness: null });
     expect(runProfileAudit).toHaveBeenCalledWith(
       expect.any(Array),
       undefined,
@@ -112,6 +115,38 @@ describe('POST /api/audit', () => {
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('insert into audits'),
       expect.arrayContaining(['user-1'])
+    );
+  });
+
+  it('flags a bio that has been unchanged for the last few audits', async () => {
+    const { getCurrentUserId } = await import('@/lib/auth');
+    const { runProfileAudit } = await import('@/lib/anthropic');
+    const { query } = await import('@/lib/db');
+    vi.mocked(getCurrentUserId).mockResolvedValueOnce('user-1');
+    await allowRateLimit();
+    const fakeResult = { overallScore: 70, headline: 'Fine, but stale' };
+    vi.mocked(runProfileAudit).mockResolvedValueOnce({
+      result: fakeResult,
+      transcribedBio: 'Founder @brandname • LA • Featured in Forbes',
+    } as never);
+    vi.mocked(query).mockResolvedValueOnce([
+      { transcribed_bio: 'Founder @brandname • LA • Featured in Forbes' },
+      { transcribed_bio: 'Founder @brandname • LA • Featured in Forbes' },
+    ]); // prior-bios lookup
+    vi.mocked(query).mockResolvedValueOnce([]); // insert
+
+    const { POST } = await import('@/app/api/audit/route');
+    const form = new FormData();
+    form.append('photos', photoFile());
+
+    const res = await POST(formRequest(form));
+    const body = await res.json();
+
+    expect(body.bioStaleness).not.toBeNull();
+    expect(body.bioStaleness.streak).toBe(3);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('insert into audits'),
+      expect.arrayContaining(['Founder @brandname • LA • Featured in Forbes'])
     );
   });
 

@@ -24,6 +24,7 @@ export type AuditResult = {
   } | null;
   contentStrategy: string[];
   topActions: string[];
+  bioStaleness: { streak: number; note: string } | null;
 };
 
 function ScoredNotesCard({
@@ -201,6 +202,13 @@ export default function AuditResults({
             note: r.note,
           }))}
         />
+      )}
+
+      {result.bioStaleness && (
+        <div className="border border-brass/40 rounded-lg bg-brass/5 p-6">
+          <p className="eyebrow text-brass mb-2">Bio hasn't changed</p>
+          <p className="text-sm text-bone/85">{result.bioStaleness.note}</p>
+        </div>
       )}
 
       {result.contentStrategy.length > 0 && (

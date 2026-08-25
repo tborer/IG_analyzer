@@ -39,7 +39,10 @@ Generate a `SESSION_SECRET` with `openssl rand -base64 32`.
 Two tables, defined in `schema.sql`:
 
 - `users` — id, email, password_hash, plan (`free` or `paid`), created_at
-- `audits` — id, user_id, bio_text, photo_count, result (json text), created_at
+- `audits` — id, user_id, bio_text, photo_count, result (json text),
+  transcribed_bio, created_at. `transcribed_bio` is the bio exactly as read
+  by the model each audit, kept only to detect an unchanged bio across
+  audits (`lib/bio-staleness.ts`) — not shown in the UI as its own field.
 
 Photos themselves are **not** stored — they're sent to the Anthropic API for
 analysis and discarded. Only the generated JSON result is persisted, keeping

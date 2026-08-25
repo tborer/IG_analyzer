@@ -67,31 +67,25 @@ deferred; check items off (or delete the line) once shipped.
 
 ## Product
 
-Bio content-strategy research (2026-08-24, analyzing external dating-bio
-advice) shipped its high-value/low-effort findings the same day:
-`lib/anthropic.ts` now checks a fixed bio red-flag checklist (quotes,
-height/age/zodiac, unverifiable titles, availability language, etc.),
-audits the display name separately from the bio text (real name vs.
-handle-repeat/nickname), and explicitly prioritizes photo fixes over bio
-wordsmithing in `topActions` when the photo set is the bigger gap.
+Bio content-strategy research (started 2026-08-24, analyzing external
+dating-bio advice) is fully shipped as of 2026-08-25:
 
-Batch 2/3 (2026-08-25) also shipped: **deterministic emoji-density check**
-(`lib/emoji.ts`) — the model transcribes the bio verbatim into an
-internal-only field, and a pure, unit-tested function (grapheme-cluster
-based, so ZWJ/skin-tone sequences count correctly as one emoji) computes a
-clean/moderate/heavy verdict in code rather than leaving "too many emojis"
-to the model's judgment.
+- Fixed bio red-flag checklist (quotes, height/age/zodiac, unverifiable
+  titles, availability language, etc.), display-name audit (real name vs.
+  handle-repeat/nickname), and topActions explicitly prioritizing photo
+  fixes over bio wordsmithing when the photo set is the bigger gap.
+- Bio archetype framework (`BIO_ARCHETYPES`, classifying against
+  Professional/Entrepreneur/Traveler/Creative/Minimal formulas and
+  rewriting toward the closest fit), the profile-picture/avatar split into
+  its own scored sub-check, and a bio link quality check.
+- Deterministic emoji-density check (`lib/emoji.ts`) — the model
+  transcribes the bio verbatim into an internal-only field, and a pure,
+  unit-tested, grapheme-cluster-based function computes a
+  clean/moderate/heavy verdict in code, not left to the model's judgment.
+- Bio-staleness nudge (`lib/bio-staleness.ts`) — `audits.transcribed_bio`
+  now persists the transcribed bio (not shown in the UI) specifically so
+  each new audit can compare against the last few and flag an unchanged
+  bio ("a dynamic bio signals an active life; a static one signals
+  nothing's happening").
 
-Batch 1/3 (2026-08-25) shipped: bio archetype framework
-(`BIO_ARCHETYPES`, classifying against Professional/Entrepreneur/Traveler/
-Creative/Minimal formulas and rewriting toward the closest fit), the
-profile-picture/avatar split into its own scored sub-check (own
-identifiability flag and named failure patterns), and a bio link quality
-check (status-signaling link vs. noise).
-
-Remaining finding from that research, not yet built:
-
-- [ ] **Bio-staleness nudge**, using audit history we already store —
-  detect an unchanged bio across the last few audits and flag it ("a
-  dynamic bio signals an active life; a static one signals nothing's
-  happening"). This is batch 3/3, still queued.
+No further items queued under Product — add new ones here as they come up.

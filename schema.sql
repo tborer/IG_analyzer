@@ -15,6 +15,10 @@ create table if not exists audits (
   bio_text text,
   photo_count integer not null default 0,
   result text not null,
+  -- The bio text as read from the screenshot by the model, kept solely to
+  -- detect an unchanged bio across audits (lib/bio-staleness.ts). Not shown
+  -- in the UI as its own field.
+  transcribed_bio text,
   created_at text not null default (datetime('now'))
 );
 

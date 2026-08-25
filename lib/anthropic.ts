@@ -293,11 +293,19 @@ list, and one of the actions should say so directly — a polished bio cannot co
 for a weak or incomplete photo set. Only lead with bio fixes when the photo set is \
 already solid and the bio is the clearest remaining gap.`;
 
+export type AuditRunResult = {
+  result: AuditResult;
+  // The bio exactly as transcribed by the model, for the caller to persist
+  // and compare against future audits (lib/bio-staleness.ts). Deliberately
+  // not part of AuditResult itself -- it's not a UI-facing field.
+  transcribedBio: string | null;
+};
+
 export async function runProfileAudit(
   photos: PhotoInput[],
   bioText: string | undefined,
   platform: string
-): Promise<AuditResult> {
+): Promise<AuditRunResult> {
   const anthropic = getClient();
 
   const userContent: Anthropic.MessageParam['content'] = [
@@ -332,12 +340,14 @@ export async function runProfileAudit(
   }
   const raw = response.parsed_output;
   let bio: AuditResult['bio'] = null;
+  let transcribedBio: string | null = null;
   if (raw.bio) {
     const { transcribedText, ...bioRest } = raw.bio;
+    transcribedBio = transcribedText;
     bio = {
       ...bioRest,
       emojiDensity: transcribedText ? computeEmojiDensity(transcribedText) : null,
     };
   }
-  return { ...raw, bio };
+  return { result: { ...raw, bio }, transcribedBio };
 }

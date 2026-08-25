@@ -13,6 +13,17 @@ if (!url) {
 const sql = readFileSync(new URL('../schema.sql', import.meta.url), 'utf8');
 const client = createClient({ url, authToken });
 
+// `create table if not exists` doesn't retrofit new columns onto a table
+// created by an older schema.sql -- add them here, once, if missing.
+async function ensureColumn(table, column, definition) {
+  const info = await client.execute(`pragma table_info(${table})`);
+  const hasColumn = info.rows.some((row) => row.name === column);
+  if (!hasColumn) {
+    await client.execute(`alter table ${table} add column ${column} ${definition}`);
+    console.log(`Added missing \`${column}\` column to ${table}.`);
+  }
+}
+
 try {
   const statements = sql
     .split(';')
@@ -22,14 +33,8 @@ try {
     await client.execute(statement);
   }
 
-  // `create table if not exists` above doesn't retrofit new columns onto a
-  // users table created by an older schema.sql -- add them here, once, if missing.
-  const columns = await client.execute('pragma table_info(users)');
-  const hasPlan = columns.rows.some((row) => row.name === 'plan');
-  if (!hasPlan) {
-    await client.execute("alter table users add column plan text not null default 'free'");
-    console.log('Added missing `plan` column to users.');
-  }
+  await ensureColumn('users', 'plan', "text not null default 'free'");
+  await ensureColumn('audits', 'transcribed_bio', 'text');
 
   console.log('Schema applied successfully.');
 } catch (err) {

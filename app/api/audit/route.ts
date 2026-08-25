@@ -4,6 +4,9 @@ import { getCurrentUserId } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { runProfileAudit, PhotoInput } from '@/lib/anthropic';
 import { dailyAuditLimit, getAuditsUsedToday, getUserPlan } from '@/lib/rate-limit';
+import { checkBioStaleness } from '@/lib/bio-staleness';
+
+const PRIOR_BIOS_TO_CHECK = 5;
 
 const MAX_PHOTOS = 12;
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB per-photo safety ceiling
@@ -74,9 +77,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  let result;
+  let result, transcribedBio;
   try {
-    result = await runProfileAudit(photos, bioText, platform);
+    ({ result, transcribedBio } = await runProfileAudit(photos, bioText, platform));
   } catch (err) {
     console.error('Audit generation failed:', err);
     return NextResponse.json(
@@ -85,15 +88,38 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let bioStaleness = null;
+  if (transcribedBio) {
+    try {
+      const priorRows = await query<{ transcribed_bio: string | null }>(
+        'select transcribed_bio from audits where user_id = ? order by created_at desc limit ?',
+        [userId, PRIOR_BIOS_TO_CHECK]
+      );
+      const priorBios = priorRows.map((row) => row.transcribed_bio ?? '');
+      bioStaleness = checkBioStaleness(transcribedBio, priorBios);
+    } catch (err) {
+      // Not knowing bio history shouldn't block the response.
+      console.error('Failed to check bio staleness:', err);
+    }
+  }
+  const finalResult = { ...result, bioStaleness };
+
   try {
     await query(
-      'insert into audits (id, user_id, bio_text, photo_count, result) values (?, ?, ?, ?, ?)',
-      [randomUUID(), userId, bioText ?? null, photos.length, JSON.stringify(result)]
+      'insert into audits (id, user_id, bio_text, photo_count, result, transcribed_bio) values (?, ?, ?, ?, ?, ?)',
+      [
+        randomUUID(),
+        userId,
+        bioText ?? null,
+        photos.length,
+        JSON.stringify(finalResult),
+        transcribedBio,
+      ]
     );
   } catch (err) {
     // Don't fail the response if persistence fails — the user still gets their result.
     console.error('Failed to persist audit:', err);
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json(finalResult);
 }
