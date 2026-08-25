@@ -52,6 +52,17 @@ export const BIO_RED_FLAGS = [
   'Availability language ("Single," "DTF," "looking for my person")',
 ] as const;
 
+// Fixed set of proven bio structures. Same closed-list rationale as
+// PHOTO_ARCHETYPES -- the model classifies the bio against one of these
+// rather than inventing an unbounded, inconsistent taxonomy.
+export const BIO_ARCHETYPES = [
+  'Professional (role • city • interest)',
+  'Entrepreneur (company or industry • city • credibility marker)',
+  'Traveler (home base • current location • interest)',
+  'Creative (craft • notable work • city)',
+  'Minimal (three interests or roles, dot-separated)',
+] as const;
+
 const CoverageAspectSchema = z.object({
   aspect: z.string(),
   covered: z.boolean(),
@@ -67,6 +78,13 @@ const ArchetypeCoverageSchema = z.object({
 const BioRedFlagSchema = z.object({
   flag: z.string(),
   present: z.boolean(),
+  note: z.string(),
+});
+
+const BioLinkSchema = z.object({
+  present: z.boolean(),
+  value: z.string().nullable(),
+  signalsStatus: z.boolean(),
   note: z.string(),
 });
 
@@ -91,12 +109,20 @@ const DisplayNameSchema = z.object({
   note: z.string(),
 });
 
+const AvatarSchema = z.object({
+  score: z.number(),
+  identifiable: z.boolean(),
+  issues: z.array(z.string()),
+  note: z.string(),
+});
+
 const AuditResultSchema = z.object({
   overallScore: z.number(),
   headline: z.string(),
   profileCoverage: z.array(CoverageAspectSchema),
-  profileHeader: ScoredNotesSchema.nullable(),
+  avatar: AvatarSchema.nullable(),
   displayName: DisplayNameSchema.nullable(),
+  profileHeader: ScoredNotesSchema.nullable(),
   gridCohesion: ScoredNotesSchema.nullable(),
   photos: z.array(PhotoAuditSchema),
   recommendedOrder: z.array(z.number().int()),
@@ -105,8 +131,10 @@ const AuditResultSchema = z.object({
     .object({
       score: z.number(),
       feedback: z.string(),
+      closestArchetype: z.string(),
       rewriteSuggestion: z.string(),
       redFlags: z.array(BioRedFlagSchema),
+      link: BioLinkSchema,
     })
     .nullable(),
   contentStrategy: z.array(z.string()),
@@ -170,16 +198,35 @@ photo present — add one in good lighting; its absence is one of the most commo
 reasons a profile reads as withholding information").
 
 STEP 3 — PROFILE-LEVEL REVIEW
-If a display name (separate from the @handle) is visible: report its exact value and \
+This step covers four distinct elements. Don't repeat the same observation across \
+more than one of them — each has its own scope.
+
+Avatar (profile picture). If visible: score and critique it as its own element, \
+separate from grid photos and the bio — a profile picture is evaluated first and \
+carries more weight than any single grid photo. Report whether the subject is \
+clearly, unambiguously identifiable, and flag specific failure patterns when present: \
+a gym or bathroom mirror selfie, sunglasses or a hat obscuring the face, a group photo \
+where it's unclear who the profile owner is, or a face that's too small/far away to \
+read clearly.
+
+Display name (separate from the @handle). If visible: report its exact value and \
 whether it reads as a real first-and-last name versus a handle repeat or a \
 nickname/emoji stack (e.g. "Johnny 🔥King🔥"). A real name reads as higher status; \
 recommend switching to one if it isn't already.
 
-If the bio/header is visible: assess clarity, personality, authenticity, grammar, and \
+Bio text. If visible: assess clarity, personality, authenticity, grammar, and \
 specifically whether it reads as generic filler ("love to laugh, travel, and eat good \
-food") versus specific and conversation-starting. Rewrite it using concrete, \
-individual detail rather than vague claims. Never suggest exaggeration or factually \
-false claims.
+food") versus specific and conversation-starting. Never suggest exaggeration or \
+factually false claims.
+
+Also classify the bio's structure against exactly this fixed set of proven formulas: \
+"Professional (role • city • interest)", "Entrepreneur (company or industry • city • \
+credibility marker)", "Traveler (home base • current location • interest)", "Creative \
+(craft • notable work • city)", "Minimal (three interests or roles, dot-separated)". \
+Report the closest fit in "closestArchetype", and write "rewriteSuggestion" explicitly \
+in that formula's shape (e.g. "Real estate investor • Miami • Jiu-jitsu"), not generic \
+prose — 3 lines maximum, dot- or pipe-separated, emojis only if they genuinely serve \
+as a line-break or location marker.
 
 Also check the bio against exactly this fixed set of well-documented status-killers, \
 reporting each as present or not: "Quotes (philosophers, rappers, \"king/queen\" \
@@ -190,6 +237,18 @@ collab\" without an audience to justify it", "\"Don't DM me unless you're seriou
 \"looking for my person\")". Each of these reads as a status signal working against \
 the profile owner, not for them — when present, say so plainly and recommend cutting \
 it, not softening it.
+
+Also check for a link in the bio. If present, report its exact value and whether it \
+signals status: a link to a business site, published work, or a press feature helps; \
+a generic Linktree with many unrelated links, a demo/portfolio unrelated to the \
+profile's appeal, or a wishlist-style link hurts. If there's no link, note that a \
+blank bio is better than a bad link, and only suggest adding one if there's something \
+genuinely status-building to link to.
+
+Header composition. If the header (avatar + name + bio together) is visible: assess \
+it as a whole — visual hierarchy, whether it reads cleanly in the first few seconds, \
+and anything about the layout itself (not the pic or bio content individually, \
+already covered above) that helps or hurts the first impression.
 
 If a grid/feed overview is visible: assess visual cohesion (palette, tone), \
 content-type variety, and whether the sequence supports a strong first impression.
@@ -209,7 +268,7 @@ in the input. "recommendedOrder" lists those same indices reordered \
 best-photo-to-feature-first.
 
 PRIORITIZATION FOR topActions
-The photo set does most of the work; the bio and header exist mainly not to undercut \
+The photo set does most of the work; the header elements exist mainly not to undercut \
 it. Order topActions by actual leverage, not by giving every category equal billing: \
 if photo/archetype coverage is significantly weaker than the bio (missing archetypes, \
 a weak or ambiguous lead photo), photo fixes must come before bio wordsmithing in the \
@@ -245,7 +304,7 @@ export async function runProfileAudit(
 
   const response = await anthropic.messages.parse({
     model: 'claude-sonnet-5',
-    max_tokens: 7000,
+    max_tokens: 8000,
     system: SYSTEM_PROMPT,
     messages: [{ role: 'user', content: userContent }],
     output_config: { format: zodOutputFormat(AuditResultSchema) },

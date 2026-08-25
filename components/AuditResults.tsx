@@ -6,8 +6,9 @@ export type AuditResult = {
   overallScore: number;
   headline: string;
   profileCoverage: { aspect: string; covered: boolean; note: string }[];
-  profileHeader: { score: number; notes: string[] } | null;
+  avatar: { score: number; identifiable: boolean; issues: string[]; note: string } | null;
   displayName: { value: string; usesRealName: boolean; note: string } | null;
+  profileHeader: { score: number; notes: string[] } | null;
   gridCohesion: { score: number; notes: string[] } | null;
   photos: PhotoAudit[];
   recommendedOrder: number[];
@@ -15,8 +16,10 @@ export type AuditResult = {
   bio: {
     score: number;
     feedback: string;
+    closestArchetype: string;
     rewriteSuggestion: string;
     redFlags: { flag: string; present: boolean; note: string }[];
+    link: { present: boolean; value: string | null; signalsStatus: boolean; note: string };
   } | null;
   contentStrategy: string[];
   topActions: string[];
@@ -78,6 +81,33 @@ export default function AuditResults({
         }))}
       />
 
+      {result.avatar && (
+        <div className="border border-hair rounded-lg bg-inkraised p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <ScoreDial score={result.avatar.score} size={56} />
+            <div>
+              <h2 className="font-display text-lg text-bone">Profile picture</h2>
+              <span
+                className={`eyebrow ${result.avatar.identifiable ? 'text-moss' : 'text-signal'}`}
+              >
+                {result.avatar.identifiable ? 'Clearly identifiable' : 'Not clearly identifiable'}
+              </span>
+            </div>
+          </div>
+          <p className="text-sm text-bone/85 mb-3">{result.avatar.note}</p>
+          {result.avatar.issues.length > 0 && (
+            <ul className="text-sm text-bone/85 space-y-1">
+              {result.avatar.issues.map((issue, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="text-signal">−</span>
+                  <span>{issue}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {result.profileHeader && <ScoredNotesCard title="Profile bio & header" data={result.profileHeader} />}
 
       {result.displayName && (
@@ -130,13 +160,18 @@ export default function AuditResults({
         <div className="border border-hair rounded-lg bg-inkraised p-6">
           <div className="flex items-center gap-4 mb-4">
             <ScoreDial score={result.bio.score} size={56} />
-            <h2 className="font-display text-lg text-bone">Bio</h2>
+            <div>
+              <h2 className="font-display text-lg text-bone">Bio</h2>
+              <span className="eyebrow text-mist">{result.bio.closestArchetype}</span>
+            </div>
           </div>
           <p className="text-sm text-bone/85 mb-4">{result.bio.feedback}</p>
           <p className="eyebrow text-brass mb-2">Try this instead</p>
-          <p className="text-sm text-bone/90 font-body italic border-l-2 border-brass/50 pl-4">
+          <p className="text-sm text-bone/90 font-body italic border-l-2 border-brass/50 pl-4 mb-4">
             {result.bio.rewriteSuggestion}
           </p>
+          <p className="eyebrow text-brass mb-2">Link</p>
+          <p className="text-sm text-bone/85">{result.bio.link.note}</p>
         </div>
       )}
 
