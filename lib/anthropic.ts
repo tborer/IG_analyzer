@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
+import { computeEmojiDensity, type EmojiDensityResult } from './emoji';
 
 let client: Anthropic | null = null;
 function getClient() {
@@ -135,13 +136,25 @@ const AuditResultSchema = z.object({
       rewriteSuggestion: z.string(),
       redFlags: z.array(BioRedFlagSchema),
       link: BioLinkSchema,
+      transcribedText: z
+        .string()
+        .nullable()
+        .describe('The bio text exactly as read from the screenshot, for internal use only.'),
     })
     .nullable(),
   contentStrategy: z.array(z.string()),
   topActions: z.array(z.string()),
 });
 
-export type AuditResult = z.infer<typeof AuditResultSchema>;
+type RawAuditResult = z.infer<typeof AuditResultSchema>;
+type RawBio = NonNullable<RawAuditResult['bio']>;
+
+// Public result type: swaps the model's raw transcription for a
+// code-computed emoji-density verdict rather than exposing the transcript
+// itself -- the transcript is an intermediate value, not a UI-facing field.
+export type AuditResult = Omit<RawAuditResult, 'bio'> & {
+  bio: (Omit<RawBio, 'transcribedText'> & { emojiDensity: EmojiDensityResult | null }) | null;
+};
 
 const SYSTEM_PROMPT = `You are two experts working together on one profile audit:
 
@@ -214,7 +227,11 @@ whether it reads as a real first-and-last name versus a handle repeat or a \
 nickname/emoji stack (e.g. "Johnny 🔥King🔥"). A real name reads as higher status; \
 recommend switching to one if it isn't already.
 
-Bio text. If visible: assess clarity, personality, authenticity, grammar, and \
+Bio text. If visible: transcribe it verbatim, exactly as written (including emoji, \
+line breaks as spaces, and punctuation), into "transcribedText" — this must be the \
+literal text, not a paraphrase, since it's used for an exact character count. If no \
+bio text is visible anywhere in the screenshots, set it to null; don't guess or \
+reconstruct it. Then assess clarity, personality, authenticity, grammar, and \
 specifically whether it reads as generic filler ("love to laugh, travel, and eat good \
 food") versus specific and conversation-starting. Never suggest exaggeration or \
 factually false claims.
@@ -313,5 +330,14 @@ export async function runProfileAudit(
   if (!response.parsed_output) {
     throw new Error('Model returned output that did not match the expected schema.');
   }
-  return response.parsed_output;
+  const raw = response.parsed_output;
+  let bio: AuditResult['bio'] = null;
+  if (raw.bio) {
+    const { transcribedText, ...bioRest } = raw.bio;
+    bio = {
+      ...bioRest,
+      emojiDensity: transcribedText ? computeEmojiDensity(transcribedText) : null,
+    };
+  }
+  return { ...raw, bio };
 }

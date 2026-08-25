@@ -75,24 +75,23 @@ audits the display name separately from the bio text (real name vs.
 handle-repeat/nickname), and explicitly prioritizes photo fixes over bio
 wordsmithing in `topActions` when the photo set is the bigger gap.
 
-Remaining findings from that research, not yet built:
+Batch 2/3 (2026-08-25) also shipped: **deterministic emoji-density check**
+(`lib/emoji.ts`) — the model transcribes the bio verbatim into an
+internal-only field, and a pure, unit-tested function (grapheme-cluster
+based, so ZWJ/skin-tone sequences count correctly as one emoji) computes a
+clean/moderate/heavy verdict in code rather than leaving "too many emojis"
+to the model's judgment.
 
-- [ ] **Bio archetype framework**, mirroring `PHOTO_ARCHETYPES` — classify
-  the bio against named formulas (Professional/Entrepreneur/Traveler/
-  Creative/Minimal: Role • City • Interest-style templates) and rewrite
-  toward the closest fit instead of a generic prose rewrite.
-- [ ] **Split the profile picture (avatar) from the header into its own
-  scored sub-check**, with its own named failure patterns (gym selfie,
-  sunglasses, ambiguous group crop) — sources say it's evaluated first and
-  weighted more heavily than any single grid photo, and `profileHeader`
-  currently bundles it in with the bio/link generically.
-- [ ] **Bio link quality check** — a link to a business/portfolio/press
-  feature helps; a generic Linktree or unrelated personal link hurts. We
-  don't look at bio links at all today.
-- [ ] **Deterministic emoji-density check** — regex-count emoji characters
-  vs. bio length as a hard metric, rather than leaving "too many emojis"
-  entirely to the model's qualitative judgment.
+Batch 1/3 (2026-08-25) shipped: bio archetype framework
+(`BIO_ARCHETYPES`, classifying against Professional/Entrepreneur/Traveler/
+Creative/Minimal formulas and rewriting toward the closest fit), the
+profile-picture/avatar split into its own scored sub-check (own
+identifiability flag and named failure patterns), and a bio link quality
+check (status-signaling link vs. noise).
+
+Remaining finding from that research, not yet built:
+
 - [ ] **Bio-staleness nudge**, using audit history we already store —
   detect an unchanged bio across the last few audits and flag it ("a
   dynamic bio signals an active life; a static one signals nothing's
-  happening").
+  happening"). This is batch 3/3, still queued.

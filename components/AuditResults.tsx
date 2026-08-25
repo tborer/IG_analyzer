@@ -20,6 +20,7 @@ export type AuditResult = {
     rewriteSuggestion: string;
     redFlags: { flag: string; present: boolean; note: string }[];
     link: { present: boolean; value: string | null; signalsStatus: boolean; note: string };
+    emojiDensity: { emojiCount: number; totalGraphemes: number; ratio: number; verdict: 'clean' | 'moderate' | 'heavy' } | null;
   } | null;
   contentStrategy: string[];
   topActions: string[];
@@ -162,7 +163,22 @@ export default function AuditResults({
             <ScoreDial score={result.bio.score} size={56} />
             <div>
               <h2 className="font-display text-lg text-bone">Bio</h2>
-              <span className="eyebrow text-mist">{result.bio.closestArchetype}</span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="eyebrow text-mist">{result.bio.closestArchetype}</span>
+                {result.bio.emojiDensity && (
+                  <span
+                    className={`eyebrow ${
+                      result.bio.emojiDensity.verdict === 'clean'
+                        ? 'text-moss'
+                        : result.bio.emojiDensity.verdict === 'moderate'
+                          ? 'text-brass'
+                          : 'text-signal'
+                    }`}
+                  >
+                    {result.bio.emojiDensity.emojiCount} emoji · {result.bio.emojiDensity.verdict}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <p className="text-sm text-bone/85 mb-4">{result.bio.feedback}</p>
