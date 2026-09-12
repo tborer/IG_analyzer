@@ -1,6 +1,6 @@
 # Outstanding work — Caliber
 
-Last reviewed: 2026-09-07.
+Last reviewed: 2026-09-12.
 
 This is the authoritative backlog going forward. It supersedes `FOLLOWUP.md`
 (kept for history/context, but new items should land here). Sections are
@@ -13,6 +13,141 @@ function names, current behavior) are taken directly from the current
 codebase as of this review; treat the *design* portions as the recommended
 approach, open to revision during implementation.
 
+## Tech stack
+
+Exact versions as pinned in `package.json` at time of writing — check that
+file for current versions before assuming these; dependencies get bumped
+over time and this doc will drift.
+
+- **Framework:** Next.js `^16.3.2`, App Router, TypeScript `^5.6.3`. Routes
+  live under `app/`; API routes are Route Handlers (`app/api/**/route.ts`)
+  using the `NextRequest`/`NextResponse` signature, not the older
+  `pages/api` style.
+- **UI:** React `^18.3.1` / React DOM `^18.3.1`. Styling is Tailwind CSS
+  `^3.4.14` (`tailwind.config.ts`, `app/globals.css`) — no CSS-in-JS, no
+  component library (MUI/Chakra/etc.); components under `components/` are
+  plain hand-rolled TSX.
+- **Database:** Turso (libSQL/SQLite-compatible), via `@libsql/client`
+  `^0.14.0`. All queries go through the single `query<T>(sql, params)`
+  helper in `lib/db.ts` (raw parameterized SQL, no ORM — no Prisma/Drizzle
+  in this stack, don't introduce one without discussing it first). Schema
+  lives in `schema.sql`, applied idempotently by `scripts/init-db.mjs`
+  (`npm run db:init`) — new tables/columns should follow that file's
+  `create table if not exists` / additive-`alter table` pattern so the
+  script stays safe to re-run against a live database.
+- **Auth:** Custom, not a third-party auth service (no NextAuth/Clerk/Auth0
+  today). Passwords hashed with `bcryptjs` `^2.4.3` (`lib/auth.ts`,
+  `hashPassword`/`verifyPassword`). Sessions are signed JWTs via `jose`
+  `^5.9.6` (`createSessionToken`/`verifySessionToken`), stored in an
+  `httpOnly` cookie (`SESSION_COOKIE = 'session'`, see
+  `sessionCookieOptions` in `lib/auth.ts`) — no session table today (see
+  §1.4, which adds one for revocation).
+- **AI:** Anthropic API via `@anthropic-ai/sdk` `^0.120.0` (`lib/anthropic.ts`)
+  — vision model call that takes bio text + screenshot images and returns a
+  structured JSON result (validated with `zod` `^4.4.3`). Images are sent
+  to the API and never persisted to the database or disk.
+- **Validation:** `zod` `^4.4.3` for structured-output/schema validation
+  (see `lib/anthropic.ts`'s use for the model's response shape — follow the
+  same pattern for any new structured data, e.g. Stripe webhook payloads in
+  §4).
+- **Testing:** Vitest `^4.1.11` (`vitest.config.mts` — `environment: 'node'`
+  today; §3.2 changes this for component tests). Run via `npm test`
+  (= `vitest run`). External calls (DB, Anthropic) are mocked in existing
+  tests under `__tests__/` — follow that pattern for new tests rather than
+  hitting real services.
+- **Deployment:** Vercel (see README's "Deploying" section). Env vars are
+  set in the Vercel project settings, mirrored in `.env.example` for local
+  dev (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`,
+  `ANTHROPIC_API_KEY` today — §4 adds Stripe keys).
+- **Package manager / scripts:** npm (`package-lock.json` is committed —
+  use `npm`, not `yarn`/`pnpm`, to keep the lockfile consistent).
+  `npm run dev` / `npm run build` / `npm start` / `npm run lint` /
+  `npm run db:init` / `npm test` — see `package.json`'s `scripts` block for
+  the authoritative list; §3.1 adds a CI workflow that runs several of
+  these.
+- **Not in this stack** (don't introduce without a reason called out in a
+  spec below): no ORM, no third-party auth service, no CMS, no state
+  management library beyond React's built-ins, no component library, no
+  E2E framework yet (§3.3 adds Playwright), no CI yet (§3.1 adds GitHub
+  Actions).
+
+## How to use this document (for incremental, autonomous implementation)
+
+This document is written to be handed to a coding agent (human or LLM,
+including a local/offline model working with less context than an
+interactive session) that will work through it **one item at a time**,
+across many separate sessions, without a person re-explaining context each
+time. Follow this process for every work session:
+
+1. **Pick the next unchecked item.** Work section-by-section in the order
+   given (§1 → §2 → §3 → §4) and top-to-bottom within a section, unless a
+   later item's "Requirements" explicitly says it depends on an earlier one
+   not yet done (several do — e.g. §4 items depend on §1.1; §3.4 depends on
+   §1.2/§1.4). Don't skip ahead to a more interesting item out of order.
+2. **Re-read the actual current code before implementing**, not just this
+   spec. File paths and function names cited here were accurate at the time
+   this was written, but prior incremental work (including your own
+   earlier sessions) may have already changed them. Grep for the relevant
+   file first; if something cited here (a function name, a table column)
+   no longer matches reality, trust the code and adapt the plan, noting the
+   discrepancy in your commit message.
+3. **Implement the minimum the spec's "Requirements" section describes.**
+   Don't gold-plate, don't refactor unrelated code, don't start a second
+   item before finishing and checking off the current one. If a
+   requirement says "decision needed," make the call, implement it, and
+   record the decision in this file (edit the relevant bullet or add a
+   sentence) so the next session doesn't re-litigate it.
+4. **Follow existing conventions instead of inventing new ones:**
+   - Route handlers: see `app/api/auth/login/route.ts` or
+     `app/api/auth/signup/route.ts` for the pattern — parse/validate input
+     early, return `NextResponse.json({ error }, { status })` on failure,
+     use `lib/auth.ts`'s helpers for anything session-related.
+   - DB access: always through `lib/db.ts`'s `query<T>()`, parameterized,
+     never string-concatenated SQL.
+   - New tables/columns: additive, idempotent changes to `schema.sql`
+     applied via `scripts/init-db.mjs`'s existing pattern — check that
+     script's current implementation before adding to it.
+   - New lib modules: small, focused, colocated with existing ones in
+     `lib/` (e.g. `lib/login-rate-limit.ts` alongside `lib/rate-limit.ts`,
+     per §1.2) rather than one growing catch-all file.
+   - Tests: colocated under `__tests__/` mirroring the source path (e.g.
+     `__tests__/lib/auth.test.ts` for `lib/auth.ts`), mocking external
+     services the same way existing tests do.
+5. **Verify before checking anything off.** At minimum: `npm run lint`,
+   `npm test`, and `npm run build` must all pass. For anything with a UI
+   change, actually run `npm run dev` and exercise it if you're able to;
+   note in your summary if you couldn't (e.g. no browser available) rather
+   than claiming it was verified.
+6. **Check the box** (`- [ ]` → `- [x]`) for each acceptance-criterion line
+   you've satisfied, and add a one-line dated note under the item if you
+   made a consequential decision or deviated from the spec (matching the
+   style of `FOLLOWUP.md`'s dated notes). Leave the item's checkboxes
+   partially checked (not all boxes ticked) if you only got partway —
+   that's fine and expected across sessions; don't mark an item done that
+   isn't.
+7. **Commit with a message describing what was actually built**, not just
+   "implement §1.2" — a future session (or person) reading `git log` should
+   understand the change without opening this file.
+8. **One item per commit** where practical — small, reviewable, bisectable
+   changes, matching this repo's existing commit history style (see
+   `git log --oneline`).
+9. **When genuinely blocked** (a "decision needed" that has real business
+   consequences — pricing, legal wording, which email/analytics vendor to
+   pay for — not just an implementation detail), make the lowest-risk
+   default choice, implement against it, and flag the decision prominently
+   in this file and your commit message rather than stalling. Don't block
+   an entire session on a question nobody's answered — that defeats the
+   point of an incremental backlog.
+
+Do not treat `AGENTS.md`'s claim about a modified Next.js requiring docs
+from `node_modules/next/dist/docs/` as accurate — that path does not exist
+in this repository (verified during this review) and real Next.js ships no
+such directory. If a future version of that file or the installed
+`node_modules` genuinely contains framework-specific docs worth reading,
+verify the path exists and its content is real documentation before relying
+on it; don't fabricate API behavior to match an instruction that doesn't
+correspond to anything on disk.
+
 ## What the app is, today
 
 Caliber audits a user's *existing, live* Instagram profile for dating
@@ -20,9 +155,8 @@ effectiveness. A signed-up user uploads bio text + profile screenshots,
 Claude's vision model scores each photo against dating-profile archetypes,
 checks bio quality (red flags, archetype fit, staleness, emoji density,
 link quality), and returns a coverage report + prioritized next actions.
-Stack: Next.js 16 (App Router/TS) on Vercel, Turso (libSQL) for storage,
-custom bcrypt+JWT auth (no third-party auth service), Anthropic API for
-analysis. Photos are never persisted — only the generated JSON result is.
+See "Tech stack" above for the full stack detail. Photos are never
+persisted — only the generated JSON result is.
 
 Shipped so far (see `git log` and `FOLLOWUP.md` for detail): core audit
 pipeline, auth (signup/login/logout/change-password), per-plan daily rate
