@@ -5,6 +5,11 @@ vi.mock('@/lib/db', () => ({
   query: vi.fn(),
 }));
 
+vi.mock('@/lib/login-rate-limit', () => ({
+  recordLoginAttempt: vi.fn(),
+  isLockedOut: vi.fn().mockResolvedValue(false),
+}));
+
 beforeAll(() => {
   process.env.SESSION_SECRET = 'test-secret-do-not-use-in-production';
 });
