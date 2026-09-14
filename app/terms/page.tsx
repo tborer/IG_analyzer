@@ -49,9 +49,14 @@ export default function TermsOfService() {
       <section className="mb-8">
         <h2 className="text-2xl font-semibold mb-4">Payment Terms</h2>
         <p className="mb-4">
-          If you subscribe to our premium service, you agree to our payment terms. 
-          We will charge your payment method on file for the subscription fee. 
-          You may cancel your subscription at any time.
+          If you subscribe to our premium service, you agree to our payment terms.
+          We will charge your payment method on file for the subscription fee, billed monthly.
+          You may cancel your subscription at any time; cancellation takes effect at the end of
+          your current billing period, and you'll retain access until then.
+        </p>
+        <p className="mb-4">
+          Subscription fees are non-refundable for partial billing periods. If you believe you
+          were charged in error, contact us within 7 days of the charge and we'll review it.
         </p>
         <p className="mb-4">
           If you have any questions about our payment terms, please contact us.

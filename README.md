@@ -2,8 +2,12 @@
 
 1. Push this repo to GitHub.
 2. Import it into Vercel.
-3. Add the four env vars from `.env.example` in the Vercel project settings
-   (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`).
+3. Add the env vars from `.env.example` in the Vercel project settings:
+   - Required: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`.
+   - Email (§1.5, password reset + verification): `RESEND_API_KEY`, `RESEND_FROM_EMAIL`.
+   - Analytics (§2.8, optional — no-ops if unset): `PLAUSIBLE_DOMAIN`.
+   - Billing (§4, not live yet — test mode only): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+     `STRIPE_PRICE_ID_MONTHLY`.
 4. Run `npm run db:init` once (locally, pointed at your production Turso database)
    to create the tables before first use. Safe to re-run — it only adds
    what's missing (e.g. the `plan` column) rather than erroring on existing tables.
@@ -33,6 +37,15 @@ To test Stripe webhooks locally, use the following commands:
 Make sure to replace `<event-name>` with the actual event type you want to test. This allows you to develop and manually verify webhook logic without deploying or waiting for real card transactions.
 
 ## Stripe Integration
+
+**Plan:** monthly subscription only (§4.2 — no annual tier for now).
+
+**Tax (§4.10):** decided — enable Stripe Tax (automatic calculation/remittance)
+rather than handling sales tax manually. Wire `automatic_tax: { enabled: true }`
+into the Checkout Session once §4.3 (checkout flow) is built. Per the same
+item's acceptance criteria, don't take live payment before the Terms of
+Service's refund/cancellation policy (added below) ships — test mode is fine
+without it.
 
 Make sure to swap test-mode keys with live-mode keys before deploying to production.
 This is a critical step to avoid accidental charges on test cards or failed payments

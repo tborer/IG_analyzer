@@ -57,7 +57,8 @@ describe('POST /api/auth/signup', () => {
   it('creates a user and sets a session cookie on success', async () => {
     const { query } = await import('@/lib/db');
     vi.mocked(query).mockResolvedValueOnce([]); // no existing user
-    vi.mocked(query).mockResolvedValueOnce([]); // insert
+    vi.mocked(query).mockResolvedValueOnce([]); // insert user
+    vi.mocked(query).mockResolvedValueOnce([]); // insert verification token (fire-and-forget)
     const { POST } = await import('@/app/api/auth/signup/route');
 
     const res = await POST(
@@ -69,7 +70,10 @@ describe('POST /api/auth/signup', () => {
 
     expect(res.status).toBe(200);
     expect(res.cookies.get('session')?.value).toBeTruthy();
-    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenCalledWith(
+      'insert into users (id, email, password_hash) values (?, ?, ?)',
+      expect.arrayContaining(['new@example.com'])
+    );
   });
 });
 
