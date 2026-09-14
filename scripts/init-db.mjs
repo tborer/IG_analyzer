@@ -1,5 +1,3 @@
-// Applies schema.sql against your Turso database.
-// Usage: TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... npm run db:init
 import { readFileSync } from 'node:fs';
 import { createClient } from '@libsql/client';
 
@@ -33,8 +31,12 @@ try {
     await client.execute(statement);
   }
 
-  await ensureColumn('users', 'plan', "text not null default 'free'");
-  await ensureColumn('audits', 'transcribed_bio', 'text');
+  await ensureColumn('users', 'stripe_customer_id', 'TEXT');
+  await ensureColumn('users', 'stripe_subscription_id', 'TEXT');
+  await ensureColumn('users', 'subscription_status', "TEXT"); -- active | past_due | canceled | incomplete | null
+  await ensureColumn('users', 'current_period_end', "TEXT"); -- ISO datetime
+
+  await ensureColumn('audits', 'transcribed_bio', 'TEXT');
 
   console.log('Schema applied successfully.');
 } catch (err) {

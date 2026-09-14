@@ -1,36 +1,26 @@
--- Run this once against your Turso database.
--- Usage: TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... npm run db:init
-
-create table if not exists users (
-  id text primary key,
-  email text unique not null,
-  password_hash text not null,
-  plan text not null default 'free',
-  created_at text not null default (datetime('now'))
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  plan TEXT NOT NULL DEFAULT 'free',
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  subscription_status TEXT, -- active | past_due | canceled | incomplete | null
+  current_period_end TEXT, -- ISO datetime
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-create table if not exists audits (
-  id text primary key,
-  user_id text not null references users(id) on delete cascade,
-  bio_text text,
-  photo_count integer not null default 0,
-  result text not null,
-  -- The bio text as read from the screenshot by the model, kept solely to
-  -- detect an unchanged bio across audits (lib/bio-staleness.ts). Not shown
-  -- in the UI as its own field.
-  transcribed_bio text,
-  created_at text not null default (datetime('now'))
+CREATE TABLE IF NOT EXISTS audits (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  bio_text TEXT,
+  photo_count INTEGER NOT NULL,
+  result TEXT,
+  transcribed_bio TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-create index if not exists idx_audits_user_id on audits(user_id);
-
-create table if not exists login_attempts (
-  id text primary key,
-  email text not null,
-  ip text not null,
-  succeeded integer not null default 0,
-  created_at text not null default (datetime('now'))
+CREATE TABLE IF NOT EXISTS processed_stripe_events (
+  event_id TEXT PRIMARY KEY,
+  processed_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-
-create index if not exists idx_login_attempts_email on login_attempts(email, created_at);
-create index if not exists idx_login_attempts_ip on login_attempts(ip, created_at);
