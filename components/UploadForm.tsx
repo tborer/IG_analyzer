@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import AuditResults, { AuditResult } from './AuditResults';
 import { compressImages } from '@/lib/image-client';
+import { trackEvent } from '@/lib/analytics';
 
 const MAX_PHOTOS = 12;
 const MAX_TOTAL_BYTES = 4 * 1024 * 1024; // stay comfortably under Vercel's request-body ceiling
@@ -71,6 +72,7 @@ export default function UploadForm() {
     setError(null);
     setLoading(true);
     setResult(null);
+    trackEvent('audit_submitted');
     try {
       const form = new FormData();
       files.forEach((f) => form.append('photos', f));
