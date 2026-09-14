@@ -1,11 +1,12 @@
 # Outstanding work — Caliber
 
-Last reviewed: 2026-09-12.
+Last reviewed: 2026-09-14.
 
 This is the authoritative backlog going forward. It supersedes `FOLLOWUP.md`
 (kept for history/context, but new items should land here). Sections are
 ordered: (1) carried-over hardening, (2) search visibility, (3) automated
-testing, (4) Stripe billing. Every item below is written as a feature spec —
+testing, (4) Stripe billing, (5) public-URL profile analysis. Every item
+below is written as a feature spec —
 problem, requirements, design, and acceptance criteria — rather than a bare
 checklist line, so any of them can be picked up and implemented without
 needing a separate design conversation first. Concrete facts (file paths,
@@ -80,7 +81,7 @@ across many separate sessions, without a person re-explaining context each
 time. Follow this process for every work session:
 
 1. **Pick the next unchecked item.** Work section-by-section in the order
-   given (§1 → §2 → §3 → §4) and top-to-bottom within a section, unless a
+   given (§1 → §2 → §3 → §4 → §5) and top-to-bottom within a section, unless a
    later item's "Requirements" explicitly says it depends on an earlier one
    not yet done (several do — e.g. §4 items depend on §1.1; §3.4 depends on
    §1.2/§1.4). Don't skip ahead to a more interesting item out of order.
@@ -169,7 +170,9 @@ Explicitly **not** built yet: several auth/legal hardening items already
 flagged in `FOLLOWUP.md`, search-engine visibility beyond on-page basics (no
 verified property, no indexed content depth, no analytics), a test suite
 that exercises the app the way a user or CI pipeline would (integration/E2E,
-component tests), and real billing (plan is a manually-set DB flag).
+component tests), real billing (plan is a manually-set DB flag), and any way
+to run an audit *without* manually uploading screenshots — there is no
+URL/handle ingestion path today (§5 specifies one).
 
 ---
 
@@ -1109,6 +1112,584 @@ free-tier rate-limit message so they understand *why* they're blocked.
 
 ---
 
+## 5. Public-URL profile analysis (no manual upload)
+
+Today every audit starts with the user manually screenshotting their own
+profile and uploading the images (`components/UploadForm.tsx` →
+`POST /api/audit` → `lib/anthropic.ts`'s `runProfileAudit`). That upload
+step is the single biggest drop-off point in the funnel: it asks for 6-12
+screenshots, a scroll-and-stitch of the grid, and a pasted bio before the
+user has seen any value at all. It also degrades the audit's own accuracy —
+the bio is *transcribed from a screenshot by the vision model* rather than
+read as text, the grid is whatever the user happened to capture, and
+captions/cadence/engagement are only visible if the user thought to
+screenshot them.
+
+This section specifies a second ingestion path: the user pastes the public
+URL (or handle) of an Instagram profile, the app fetches that profile's
+public data itself, and the **same** analysis pipeline runs on it. Every
+analysis feature that exists today must be present in the URL flow — photo
+archetype scoring and coverage, per-photo verdicts and recommended order,
+avatar critique, display-name check, bio archetype/red-flags/rewrite/link
+check, code-computed emoji density, bio staleness, grid cohesion, profile
+coverage checklist, content strategy, prioritized top actions — rendering
+through the existing `components/AuditResults.tsx` with no change to the
+result shape. Two depth modes (**basic** and **detailed**) then trade cost
+and latency against how much of the profile is pulled in.
+
+Sequenced after §4 in this document, but it has no hard dependency on
+billing: depth gating can ride on today's `users.plan` column. It does have
+a hard dependency on §1.1 (the privacy policy and ToS have to describe
+third-party profile fetching before this ships — see 5.9). If §4 lands
+first, "detailed" becomes the most natural paid-plan upsell the product
+has.
+
+**NEEDS_DECISION (blocking for 5.1 only; the rest of §5 can be built
+against the provider interface with the fixture provider).** Which profile
+data source do we pay for? This is a real business/legal/pricing decision,
+not an implementation detail — it has a per-profile cost, a vendor
+contract, and Instagram ToS exposure attached to it. The options, with the
+trade-offs as they stand:
+
+- **Instagram Graph API — Business Discovery.** The only first-party,
+  fully sanctioned route. Requires a Meta app plus a connected Instagram
+  Business/Creator account to make the call, and it can only look up
+  *other* Business/Creator accounts (`business_discovery.username(...)`
+  returns username, name, biography, website, follower/media counts, and
+  recent media with captions and engagement). Personal public accounts —
+  most of this product's actual audience — are **not** reachable this way.
+  Cost: free. Coverage: poor for the target user.
+- **A third-party profile-data vendor** (Apify's Instagram scrapers,
+  Bright Data, ScrapingBee/ScraperAPI, and similar). Covers personal
+  public accounts, priced per request or per result, and moves the
+  scraping mechanics — proxying, login walls, markup churn — onto the
+  vendor. Costs real money per audit and the ToS exposure is shared, not
+  eliminated. Coverage: good. Cost: the thing to decide.
+- **Direct unauthenticated fetching of instagram.com** by this app. Cheap
+  in dollars and expensive in everything else: the anonymous web-profile
+  endpoints are login-walled, IP-rate-limited, and change without notice,
+  and doing it at all is squarely against Instagram's ToS. **Not
+  recommended**; do not build this as the default provider.
+
+Until this is answered, implement `lib/ig-profile/` (5.1) against a
+fixture/mock provider so that 5.2-5.12 are buildable and testable, and
+leave the real provider behind the `IG_PROVIDER` env switch. Record the
+answer here when it's made.
+
+### 5.1 Profile ingestion layer
+
+**Requirements.**
+
+- `lib/ig-url.ts` — pure, dependency-free handle parsing and validation.
+  Accepts `https://www.instagram.com/handle`, `instagram.com/handle/`,
+  `http://instagram.com/handle?igsh=...`, `@handle`, and a bare `handle`;
+  normalizes all of them to a lowercase handle with no `@`, no trailing
+  slash, no query string. Rejects, with a distinct error for each so the
+  UI can say something useful: post/reel/story permalinks (`/p/...`,
+  `/reel/...`, `/stories/...` — those are single pieces of content, not a
+  profile), reserved paths (`/explore`, `/accounts`, `/direct`,
+  `/challenge`, `/legal`, and similar), non-Instagram hosts, and anything
+  failing Instagram's own handle rules (1-30 chars, `a-z0-9._`, no leading
+  or trailing `.`, no `..`). Same "small, focused module in `lib/`" shape
+  as `lib/emoji.ts` and `lib/bio-staleness.ts`.
+- `lib/ig-profile/types.ts` — the provider-agnostic shape everything
+  downstream consumes. Nothing above this layer should know which vendor
+  produced the data:
+  ```ts
+  export type IgMedia = {
+    id: string;
+    kind: 'image' | 'video' | 'carousel';
+    imageUrl: string;        // still/thumbnail URL, fetched at audit time, never persisted
+    caption: string | null;
+    postedAt: string | null; // ISO
+    likeCount: number | null;
+    commentCount: number | null;
+  };
+
+  export type IgProfile = {
+    username: string;
+    displayName: string | null;
+    biography: string | null;   // real text, not a screenshot transcription
+    externalUrl: string | null;
+    avatarUrl: string | null;
+    followerCount: number | null;
+    followingCount: number | null;
+    postCount: number | null;
+    isPrivate: boolean;
+    isVerified: boolean;
+    media: IgMedia[];           // most recent first
+    fetchedAt: string;          // ISO
+  };
+  ```
+- `lib/ig-profile/index.ts` — `fetchProfile(username, depth)` dispatching
+  on `process.env.IG_PROVIDER` to one of `providers/graph.ts`,
+  `providers/vendor.ts`, `providers/fixture.ts`. Provider modules
+  implement one interface (`ProfileProvider`) and are the *only* files
+  allowed to know a vendor's wire format; each validates its response with
+  `zod` and maps it into `IgProfile`, matching how `lib/anthropic.ts`
+  validates model output today. An unknown or unset `IG_PROVIDER` is a
+  clear startup-time error, not a silent fallback to a live scrape.
+- Every fetch gets a hard timeout (`IG_FETCH_TIMEOUT_MS`, default 15000)
+  and a bounded single retry on a transient failure. A provider failure
+  must surface as a typed error the route can map to a specific HTTP
+  status and message (5.10), never as an unhandled 500.
+- Image bytes are fetched separately, in-process, at audit time
+  (`lib/ig-profile/images.ts`): download each `imageUrl`, cap per-image
+  and total bytes at the same ceilings `/api/audit` already enforces
+  (8MB per image, 4MB total after downscale), downscale server-side to
+  the 1568px long edge `lib/image-client.ts` already targets in the
+  browser, re-encode to JPEG, and hand `PhotoInput[]` to
+  `runProfileAudit`. Skip an image that fails to fetch rather than failing
+  the whole audit, and record how many were skipped so coverage can say so
+  honestly.
+- **Image bytes are never written to disk or the database**, matching the
+  existing guarantee for uploads. The snapshot table in 5.2 stores text
+  and URLs only.
+
+**Acceptance criteria.**
+- [ ] `lib/ig-url.ts` normalizes all accepted forms above and rejects each
+  invalid class with its own error code, covered by unit tests.
+- [ ] `fetchProfile()` returns `IgProfile` from the fixture provider with
+  no network access, so the rest of §5 is testable without a vendor.
+- [ ] Swapping providers is an env-var change only — no call-site edits
+  outside `lib/ig-profile/`.
+- [ ] A provider timeout or non-200 produces a typed error, not a 500.
+- [ ] No fetched image byte is ever persisted (verified by inspecting what
+  5.2's snapshot row actually contains).
+
+### 5.2 Schema
+
+**Requirements.** Additive columns on `audits`, following
+`scripts/init-db.mjs`'s existing `ensureColumn()` pattern (the same
+mechanism §4.1 uses — check that script before adding, don't introduce a
+second migration mechanism):
+
+```sql
+alter table audits add column source text;       -- 'upload' | 'url'
+alter table audits add column ig_username text;  -- normalized handle, url-sourced audits only
+alter table audits add column depth text;        -- 'basic' | 'detailed'
+```
+
+Existing rows have `NULL` in all three; read them as `source = 'upload'`,
+`depth = 'detailed'` (today's upload flow already sends everything the user
+gave it) so history keeps rendering.
+
+Plus a short-lived snapshot table, so re-running an audit on the same
+handle inside the TTL doesn't re-bill a vendor request, and so repeated
+submissions of the same handle can't be used to hammer the provider:
+
+```sql
+create table if not exists ig_profile_snapshots (
+  id text primary key,
+  username text not null,
+  depth text not null,
+  payload text not null,   -- JSON IgProfile: text + URLs only, no image bytes
+  fetched_at text not null default (datetime('now'))
+);
+
+create index if not exists idx_ig_profile_snapshots_username
+  on ig_profile_snapshots(username, fetched_at);
+```
+
+`IG_SNAPSHOT_TTL_MINUTES` (default 60) decides freshness. A snapshot older
+than the TTL is ignored and refetched; a basic snapshot never satisfies a
+detailed request (the reverse is fine — a detailed snapshot can serve a
+basic audit). Add a `created_at`-style cleanup note: snapshots are cache,
+not history, and can be deleted freely.
+
+**Acceptance criteria.**
+- [ ] Migration is idempotent and safe to re-run against a live DB.
+- [ ] Pre-existing audit rows still render in `/dashboard/history` with
+  the new columns null.
+- [ ] A second audit of the same handle within the TTL performs zero
+  provider requests (assert on the mock provider's call count in a test).
+- [ ] `payload` contains no base64 or binary image data.
+
+### 5.3 Depth modes: basic vs detailed
+
+**Requirements.** One selector, two documented profiles of behavior. The
+result *shape* is identical in both — what changes is how much of the
+profile was pulled in, and the coverage checklist says so plainly rather
+than silently scoring on thin input.
+
+**Basic** — the fast, cheap look, meant to be runnable on the free plan
+and to produce a result in a few seconds:
+- Fetches profile header only: avatar, display name, biography, external
+  link, follower/following/post counts, plus the **6 most recent grid
+  images** at thumbnail resolution. No captions, no engagement, no video
+  frames.
+- One model call, `max_tokens` around 4000.
+- `profileCoverage` must honestly mark "Individual posts with captions",
+  "Highlights or pinned content", and "Video or Reels content" as not
+  covered, with the note explaining that a detailed audit covers them —
+  this is the existing coverage mechanism doing its job, not a new
+  upsell surface bolted on.
+- Code-computed signals that don't need posts still run: emoji density,
+  bio staleness, link check.
+
+**Detailed** — the full audit, the closest equivalent to a well-prepared
+manual upload and then some:
+- Fetches up to **12 most recent posts** at display resolution, with
+  captions, post timestamps, like/comment counts, and media kind
+  (image/video/carousel), plus everything basic fetches.
+- Captions and post metadata are passed to the model as text context
+  alongside the images, so `contentStrategy` can finally speak to caption
+  quality and posting cadence from real data rather than from whatever
+  happened to be screenshotted.
+- Runs the full code-computed metric set in 5.5.
+- One model call, `max_tokens` 8000 (today's value).
+- `profileCoverage` marks posts/captions and video content as covered;
+  highlights remain not covered unless the chosen provider exposes them
+  (most don't — say so rather than guessing).
+
+Depth is an explicit, user-visible choice, defaulting to **basic** for
+free-plan users and **detailed** for paid. Free users choosing detailed
+get the same upgrade prompt pattern §4.7/§4.11 establish for the
+rate-limit wall. Store the chosen depth on the audit row (5.2) so history
+can label what a given result was based on.
+
+**Acceptance criteria.**
+- [ ] Both modes return a value satisfying today's `AuditResult` type
+  with no schema change — `components/AuditResults.tsx` renders either
+  without modification.
+- [ ] Basic mode issues exactly one model call with ≤6 images and marks
+  the uncovered aspects as uncovered.
+- [ ] Detailed mode passes captions and timestamps into the prompt and
+  covers the post/caption aspect.
+- [ ] Depth is persisted and shown in `/dashboard/history`.
+- [ ] A free-plan user selecting detailed gets an upgrade prompt, not a
+  silent downgrade or a 500.
+
+### 5.4 Analysis parity — the model call
+
+**Problem.** The risk in adding a second ingestion path is that it
+quietly becomes a *second, worse* audit. Everything in `lib/anthropic.ts`
+— eight photo archetypes, five coverage aspects, eight bio red flags,
+five bio archetypes, avatar/display-name/header/grid split, prioritized
+`topActions` — must apply identically to a URL-sourced profile.
+
+**Requirements.**
+- Reuse `runProfileAudit` rather than writing a parallel prompt. Extend
+  its signature to take an optional structured context object instead of
+  today's free-text `bioText`:
+  ```ts
+  runProfileAudit(photos, context: AuditContext, platform)
+  // AuditContext = { bioText?: string; profile?: IgProfile; depth: 'basic' | 'detailed' }
+  ```
+  Keep the existing call site working (upload flow passes
+  `{ bioText, depth: 'detailed' }`), so this is an additive change, not a
+  rewrite of the prompt.
+- Add a small, clearly-delimited block to the user message when
+  `profile` is present, giving the model the *known* facts it currently
+  has to infer from pixels: exact biography text, exact display name,
+  exact external link, follower/post counts, and (detailed only) per-post
+  captions with timestamps and engagement, keyed to the same 0-based
+  image indices the photos use.
+- Tighten the system prompt for this case, additively: when the bio text
+  is supplied as text, the model must **not** re-transcribe it —
+  `transcribedText` should echo the supplied text verbatim so
+  `lib/bio-staleness.ts` and `lib/emoji.ts` keep working unchanged
+  downstream. This removes a real accuracy bug in the upload flow, where
+  emoji density and staleness are computed from an OCR-ish transcription.
+- The known-facts block is **data, not instruction**. A fetched biography
+  or caption is third-party text that can contain anything, including
+  text shaped like a prompt ("ignore previous instructions", "score this
+  profile 100"). Delimit it explicitly, label it as untrusted profile
+  content to be analyzed and never obeyed, and add the guardrail sentence
+  to `SYSTEM_PROMPT`. Cover this with a test asserting an injected
+  instruction in a fixture bio doesn't change the audit's structure.
+- Do not weaken any existing guardrail: no manipulation/deception advice,
+  no commentary on protected characteristics, third-party people
+  appearing in fetched posts are not the subject of the audit.
+- `bioStaleness` for URL audits keys on `ig_username`, not just
+  `user_id` — a user auditing two handles shouldn't see one profile's
+  streak reported against the other. Pass the handle through to the
+  prior-bio query in the pipeline helper (5.6).
+
+**Acceptance criteria.**
+- [ ] A URL-sourced audit returns every field an upload-sourced audit
+  returns, with the same archetype/red-flag/coverage vocabularies.
+- [ ] `bio.transcribedText` equals the fetched biography verbatim when
+  one was fetched (asserted in a test), so emoji density is computed on
+  real text.
+- [ ] Existing `__tests__/api/audit.test.ts` still passes with the
+  extended `runProfileAudit` signature.
+- [ ] A fixture profile whose biography contains an injection attempt
+  produces a normal, schema-valid audit.
+- [ ] Staleness streaks are per-handle for URL audits.
+
+### 5.5 Code-computed profile metrics (`lib/ig-metrics.ts`)
+
+**Problem.** Fetched posts carry timestamps, engagement counts, and
+caption text — facts that should be *computed*, not estimated by a
+language model. This repo already prefers that split (`lib/emoji.ts`
+computes emoji density in code instead of asking the model;
+`lib/bio-staleness.ts` computes the streak in code), and the same
+reasoning applies here.
+
+**Requirements.** New pure module, no DB and no network, unit-tested the
+way `lib/emoji.ts` is. Given `IgMedia[]` plus the profile counts, compute:
+- **Posting cadence** — median gap between the fetched posts in days, plus
+  days since the most recent post, and a verdict (`active` / `slowing` /
+  `dormant`). A profile last posted eleven months ago reads as abandoned,
+  and that's a fact, not a judgement call.
+- **Media mix** — counts and shares of image / video / carousel posts. A
+  grid with no video at all is a concrete, nameable gap.
+- **Caption profile** — median caption length in characters, share of
+  posts with no caption, median hashtag count per post, and whether
+  hashtag use looks spammy (a documented threshold, stated in the module).
+- **Engagement** — median likes and comments per post, and engagement rate
+  against `followerCount` when both are available. Explicitly `null`, not
+  zero, when the provider doesn't return counts — never fabricate a rate
+  from missing data.
+- **Follower/following ratio**, when both are present.
+
+Surface the result as a new optional `profileMetrics` field on
+`AuditResult` (nullable, so upload-sourced and basic-mode audits simply
+carry `null`), rendered by a new `components/ProfileMetricsCard.tsx`
+alongside the existing cards. Also feed the computed values into the
+model's context block (5.4) so `contentStrategy` and `topActions` can
+reference them instead of re-deriving them.
+
+**Acceptance criteria.**
+- [ ] Pure functions, no DB/network, covered by
+  `__tests__/lib/ig-metrics.test.ts` including the empty-input and
+  missing-engagement-data cases.
+- [ ] Every metric is `null` rather than a guess when its input is
+  missing.
+- [ ] `profileMetrics` is nullable and absent-safe — existing history rows
+  and upload audits render unchanged.
+
+### 5.6 API route
+
+**Requirements.**
+- New handler `app/api/audit/url/route.ts`, JSON body (not multipart):
+  `{ url: string, depth: 'basic' | 'detailed' }`. Leave `/api/audit`
+  alone — it keeps serving the upload flow unchanged.
+- Same route-handler conventions as the rest of `app/api/**`: auth via
+  `getCurrentUserId()` with a 401 when absent, validate the body with
+  `zod`, return `NextResponse.json({ error }, { status })` on every
+  failure path.
+- Order of operations: auth → parse/validate handle (`lib/ig-url.ts`) →
+  plan and depth gating → rate-limit checks (5.8) → snapshot lookup or
+  provider fetch → private/empty-profile checks → image fetch →
+  `runProfileAudit` → code-computed metrics, emoji density, staleness →
+  persist → respond.
+- Extract the shared tail of that pipeline — staleness lookup, result
+  assembly, `audits` insert, persistence failures not being fatal — into
+  `lib/audit-pipeline.ts`, and have **both** routes use it. Today that
+  logic lives inline in `app/api/audit/route.ts`; duplicating it is how
+  the two paths drift apart.
+- Persist `source = 'url'`, `ig_username`, `depth`, `photo_count` (the
+  number of images actually analyzed, after skips), and `bio_text` (the
+  fetched biography) so history rows are indistinguishable in quality
+  from upload rows.
+
+**Acceptance criteria.**
+- [ ] Unauthenticated request returns 401.
+- [ ] Malformed URL/handle returns 400 with a specific message per
+  rejection class from 5.1.
+- [ ] Successful call returns the same JSON body shape `/api/audit`
+  returns.
+- [ ] `lib/audit-pipeline.ts` is used by both routes; no duplicated
+  persistence or staleness logic remains in either.
+- [ ] Persistence failure still returns the audit to the user (matching
+  today's behavior).
+
+### 5.7 UI
+
+**Requirements.**
+- `components/ProfileUrlForm.tsx` — new client component: a URL/handle
+  input, a basic/detailed depth selector with one line of copy explaining
+  what each covers, the ownership attestation checkbox from 5.9, a submit
+  button, inline validation from a client-side call into `lib/ig-url.ts`
+  (same module, no duplicated regex), and a progress indicator that names
+  the current stage ("Fetching profile…", "Analyzing 9 photos…") — a
+  detailed audit is a multi-second operation and a bare spinner reads as
+  broken.
+- `app/dashboard/page.tsx` gains a two-tab switch at the top: **"Paste
+  profile URL"** (default) and **"Upload screenshots"** (today's
+  `UploadForm`, unchanged). The URL path becomes the primary entry point;
+  upload stays as the fallback for private accounts, other platforms, and
+  anyone who'd rather not hand over a handle.
+- Results render through the existing `AuditResults`, with a small badge
+  naming the source and depth ("Instagram · @handle · Detailed"), and —
+  for URL audits — the fetched avatar and grid thumbnails used as
+  `previewUrls` so the photo cards keep their images.
+- On a fetch failure that has an upload fallback (5.10), the error state
+  offers a one-click switch to the upload tab, preserving whatever the
+  user already typed.
+- Tailwind only, hand-rolled TSX, matching the existing components — no
+  component library, no new state-management dependency.
+
+**Acceptance criteria.**
+- [ ] A signed-in user can paste `instagram.com/handle`, pick a depth, and
+  get a rendered audit without uploading anything.
+- [ ] Upload flow still works, unchanged, from the second tab.
+- [ ] Validation errors appear inline before any request is sent.
+- [ ] Every failure state offers a next step, not a dead end.
+
+### 5.8 Abuse, rate limiting, and cost control
+
+**Problem.** Uploads are self-limiting: the user can only audit profiles
+they can screenshot. A URL field can be pointed at anyone, and every
+submission costs a provider request plus a model call. Without limits this
+is a free scraping-and-analysis service running on our budget.
+
+**Requirements.**
+- Reuse `dailyAuditLimit(plan)` / `getAuditsUsedToday()` — URL audits count
+  against the same daily cap as uploads; this is not a separate allowance.
+- Add a per-user daily cap on **distinct handles** audited (suggested: 2
+  free / 10 paid), so the daily audit allowance can't be spread across
+  arbitrarily many strangers' profiles. New small module
+  `lib/url-audit-limit.ts` alongside `lib/rate-limit.ts` and
+  `lib/login-rate-limit.ts`, following their shape.
+- A global daily provider-request budget (`IG_DAILY_FETCH_BUDGET`), checked
+  before dispatching a fetch, so a runaway loop or a spike can't produce an
+  unbounded vendor bill. Exceeding it returns a clear "try again later",
+  logs loudly, and does not fall through to a live scrape.
+- Snapshot cache (5.2) is checked before every fetch — a re-run inside the
+  TTL costs nothing.
+- Refuse `isPrivate` profiles before any image fetch or model call.
+- Log per-audit provider request count and image count so unit cost is
+  measurable once a vendor is live.
+
+**Acceptance criteria.**
+- [ ] URL audits decrement the same daily allowance as uploads.
+- [ ] Distinct-handle cap is enforced and has its own specific message,
+  distinguishable from the daily-audit message.
+- [ ] Global fetch budget is enforced and tested.
+- [ ] Private profile is rejected before any spend.
+
+### 5.9 Privacy, consent, and legal
+
+**Problem.** Every audit today is the user's own profile, with their own
+screenshots. This feature lets a user submit *someone else's* public
+profile, which means the app now fetches and processes third-party
+personal data — a materially different privacy posture, and one §1.1's
+privacy policy does not currently describe.
+
+**Requirements.**
+- Update the §1.1 privacy policy before this ships: disclose that pasting
+  a profile URL causes the app to retrieve that profile's public data
+  (via the named provider, as a sub-processor), that the fetched images
+  are sent to Anthropic and **not** stored, and that what is retained is
+  the generated JSON audit plus the handle, biography text, and cached
+  snapshot (with its TTL). Update the ToS's acceptable-use section to
+  prohibit using the tool to profile, harass, or surveil other people.
+- Ownership attestation in the UI (5.7): an explicit checkbox stating the
+  profile is the user's own or one they're authorized to audit. Not legal
+  armor by itself, but it sets the product's intent and is the hook for
+  enforcement.
+- Refuse private profiles outright (5.8) — "public" is the whole premise.
+- Provide snapshot deletion: a user-triggered path (or, at minimum, a
+  documented manual query) to purge `ig_profile_snapshots` rows for a
+  handle, and a stated TTL-based expiry, so cached third-party data isn't
+  retained indefinitely.
+- Rate the distinct-handle cap (5.8) as a privacy control, not just a cost
+  control — it's the mechanism that stops bulk profiling.
+
+**Decision recorded here when made:** whether to go further and require
+proof of ownership (e.g. a verification code temporarily placed in the
+bio) before allowing an audit. Current recommendation: **no** — it
+reintroduces exactly the friction this feature exists to remove, and the
+data being read is already public. Revisit if abuse shows up.
+
+**Acceptance criteria.**
+- [ ] Privacy policy and ToS updated and live *before* the feature is
+  enabled in production.
+- [ ] Attestation checkbox is required to submit.
+- [ ] Private profiles are refused with a clear explanation.
+- [ ] Snapshot purge path exists and is documented in the README.
+
+### 5.10 Failure modes and fallback
+
+**Requirements.** Every one of these gets its own message and its own
+suggested next step — never a generic "something went wrong", and never a
+silent partial audit presented as a complete one:
+
+| Condition | Response |
+| --- | --- |
+| Invalid/unparseable handle or URL | 400, inline, with an example of a valid URL |
+| Post/reel permalink pasted | 400, "that's a post, not a profile" |
+| Handle not found | 404, offer the upload tab |
+| Profile is private | 422, explain public-only, offer the upload tab |
+| Profile has zero posts | 200 with a header-only audit, coverage marked accordingly |
+| Provider timeout / 5xx / quota exhausted | 503, "try again shortly", offer the upload tab |
+| Some images failed to download | 200, audit proceeds, coverage note states how many were skipped |
+| All images failed to download | 502, offer the upload tab |
+| Model call fails | 502, matching `/api/audit`'s existing behavior and copy |
+
+The upload flow is the designated fallback for all of these — it must stay
+fully functional and reachable in one click from any URL-flow error state.
+
+**Acceptance criteria.**
+- [ ] Each row above is exercised by a test with a mocked provider.
+- [ ] No failure path returns a 500 or an unhandled rejection.
+- [ ] Partial image failure is disclosed in the result, not hidden.
+
+### 5.11 Tests
+
+**Requirements.** Vitest, colocated under `__tests__/` mirroring source
+paths, external services mocked — same as every existing test in the repo:
+- `__tests__/lib/ig-url.test.ts` — every accepted form normalizes; every
+  rejected class returns its own error.
+- `__tests__/lib/ig-metrics.test.ts` — cadence, media mix, caption
+  profile, engagement, empty and missing-data cases.
+- `__tests__/lib/ig-profile/fixture.test.ts` — the fixture provider
+  satisfies the `ProfileProvider` interface and the `zod` mapping.
+- `__tests__/api/audit-url.test.ts` — 401 unauthenticated; 400 bad
+  handle; 422 private; depth gating by plan; snapshot cache hit performs
+  zero provider calls; distinct-handle cap; prompt-injection fixture;
+  successful audit returns the same shape as `/api/audit`.
+- Extend `__tests__/api/audit.test.ts` to prove the upload flow is
+  unchanged by the `runProfileAudit` signature change.
+
+**Acceptance criteria.**
+- [ ] `npm test` passes with the new files, no network access in any test.
+- [ ] Provider and Anthropic client are mocked, never called for real.
+
+### 5.12 Configuration
+
+**Requirements.** New env vars, added to `.env.example` with placeholders
+and documented in the README's env var list:
+
+```
+IG_PROVIDER=fixture            # fixture | graph | vendor
+IG_PROVIDER_API_KEY=           # vendor credential, when IG_PROVIDER=vendor
+IG_GRAPH_ACCESS_TOKEN=         # when IG_PROVIDER=graph
+IG_GRAPH_USER_ID=              # the connected IG Business account making the lookup
+IG_FETCH_TIMEOUT_MS=15000
+IG_SNAPSHOT_TTL_MINUTES=60
+IG_DAILY_FETCH_BUDGET=500
+```
+
+`IG_PROVIDER` defaults to `fixture` so a misconfigured deployment fails
+visibly and cheaply rather than falling back to a live scrape.
+
+**Acceptance criteria.**
+- [ ] `.env.example` and README list every var above.
+- [ ] Missing credentials for the selected provider produce a clear
+  configuration error, not a runtime crash mid-audit.
+
+### 5.13 Out of scope (for this section)
+
+Named explicitly so a later session doesn't quietly expand the work:
+- Other platforms (TikTok, X, LinkedIn) by URL. The upload flow already
+  handles them via its platform selector; URL ingestion is
+  Instagram-only for now.
+- Stories, highlights, and tagged photos — not reliably available from
+  any of the candidate providers.
+- Historical tracking / "your profile over time" dashboards. The snapshot
+  table is a cache with a TTL, deliberately not a time series. A
+  progress-tracking feature is its own spec.
+- Competitor or benchmark comparison ("how do I stack up against @x") —
+  a different product with a different privacy posture.
+- Auto-applying fixes (editing the bio, reordering the grid) — this app
+  critiques, it doesn't hold write access to anyone's account.
+
+---
+
 ## Suggested sequencing
 
 1. **Carried-over hardening (§1)** first — small, self-contained, and the
@@ -1118,5 +1699,13 @@ free-tier rate-limit message so they understand *why* they're blocked.
    lead-time item, worth starting early.
 3. **CI + component/E2E tests (§3)** — put a safety net in place before
    introducing a payments surface in §4.
-4. **Stripe billing (§4)** — the product's core unlock, sequenced last so
-   it lands on top of the legal groundwork and test coverage above.
+4. **Stripe billing (§4)** — the product's core unlock, sequenced after the
+   legal groundwork and test coverage above.
+5. **Public-URL profile analysis (§5)** — the biggest funnel win in this
+   document (it removes the screenshot-upload step entirely) but sequenced
+   last because 5.1 is blocked on a paid-vendor decision and 5.9 depends on
+   §1.1's privacy policy and ToS existing. Two pieces can start before that
+   decision lands: `lib/ig-url.ts` and `lib/ig-metrics.ts` are pure,
+   dependency-free modules that can be built and tested against fixtures
+   immediately. If §4 ships first, §5's "detailed" depth mode becomes the
+   clearest paid-plan upsell the product has.
