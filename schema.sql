@@ -23,3 +23,14 @@ create table if not exists audits (
 );
 
 create index if not exists idx_audits_user_id on audits(user_id);
+
+create table if not exists login_attempts (
+  id text primary key,
+  email text not null,
+  ip text not null,
+  succeeded integer not null default 0,
+  created_at text not null default (datetime('now'))
+);
+
+create index if not exists idx_login_attempts_email on login_attempts(email, created_at);
+create index if not exists idx_login_attempts_ip on login_attempts(ip, created_at);
