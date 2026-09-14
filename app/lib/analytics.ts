@@ -1,20 +1,13 @@
-// In your AuthForm component:
+import { Analytics } from 'plausible'
 
-// When user starts signup
-trackEvent('signup_started')
+export const plausible = new Analytics({
+  domain: 'caliber-analyzer.com',
+  apiVersion: 1
+})
 
-// When user completes signup
-trackEvent('signup_completed')
+export function trackEvent(name: string, props?: Record<string, any>) {
+  plausible.track(name, props)
+}
 
-// In your UploadForm component:
-
-// When user submits audit
-trackEvent('audit_submitted')
-
-// When audit is completed
-track,Event('audit_completed')
-
-// In your pricing page:
-
-// When user clicks upgrade
-trackEvent('upgrade_clicked')
+// Add this to your layout or main component:
+// <Analytics src="https://plausible.io/js/plausible.js" domain="caliber-analyzer.com" apiVersion={1} />
