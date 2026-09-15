@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import AuditResults, { AuditResult } from './AuditResults';
 import { compressImages } from '@/lib/image-client';
 import { trackEvent } from '@/lib/analytics';
@@ -26,6 +27,7 @@ export default function UploadForm() {
   const [loading, setLoading] = useState(false);
   const [compressing, setCompressing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCta, setErrorCta] = useState<'upgrade' | 'billing' | null>(null);
   const [result, setResult] = useState<AuditResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -70,6 +72,7 @@ export default function UploadForm() {
       return;
     }
     setError(null);
+    setErrorCta(null);
     setLoading(true);
     setResult(null);
     trackEvent('audit_submitted');
@@ -83,6 +86,10 @@ export default function UploadForm() {
       const res = await fetch('/api/audit', { method: 'POST', body: form });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        // §4.11: turn the rate-limit wall into a conversion opportunity,
+        // and give a past_due user a distinct path to fix billing.
+        if (body.billingIssue) setErrorCta('billing');
+        else if (body.upgrade) setErrorCta('upgrade');
         throw new Error(body.error || `Request failed (${res.status})`);
       }
       const data: AuditResult = await res.json();
@@ -211,7 +218,19 @@ export default function UploadForm() {
         />
       </div>
 
-      {error && <p className="text-sm text-signal">{error}</p>}
+      {error && (
+        <p className="text-sm text-signal">
+          {error}
+          {errorCta && (
+            <>
+              {' '}
+              <Link href="/dashboard/settings" className="underline hover:text-brass">
+                {errorCta === 'billing' ? 'Update billing' : 'Upgrade for more audits'}
+              </Link>
+            </>
+          )}
+        </p>
+      )}
 
       <button
         onClick={submit}

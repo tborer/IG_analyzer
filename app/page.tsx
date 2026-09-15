@@ -149,6 +149,38 @@ export default function LandingPage() {
       </section>
 
       <section className="mb-24">
+        <p className="eyebrow text-brass mb-6">Pricing</p>
+        <div className="grid sm:grid-cols-2 gap-6">
+          <div className="border border-hair rounded-lg bg-inkraised p-6">
+            <p className="eyebrow text-mist mb-2">Free</p>
+            <p className="font-display text-2xl mb-4">1 audit / day</p>
+            <p className="text-sm text-bone/70 leading-relaxed mb-6">
+              The full audit, no card required — one profile review per day.
+            </p>
+            <Link
+              href="/signup"
+              className="inline-block px-5 py-2.5 border border-hair rounded-lg hover:border-brass/50 transition-colors"
+            >
+              Get started free
+            </Link>
+          </div>
+          <div className="border border-brass/40 rounded-lg bg-brass/5 p-6">
+            <p className="eyebrow text-brass mb-2">Paid</p>
+            <p className="font-display text-2xl mb-4">5 audits / day</p>
+            <p className="text-sm text-bone/70 leading-relaxed mb-6">
+              For tracking changes over time or auditing more than one profile a day.
+            </p>
+            <Link
+              href="/signup"
+              className="inline-block px-5 py-2.5 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 transition-colors"
+            >
+              Sign up to upgrade
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-24">
         <h2 className="font-display text-2xl mb-8">Questions</h2>
         <div className="space-y-8">
           {FAQ.map((item) => (
