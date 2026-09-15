@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 vi.mock('@/lib/db', () => ({
@@ -8,6 +8,10 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/auth')>();
   return { ...actual, getCurrentUserId: vi.fn() };
+});
+
+beforeAll(() => {
+  process.env.SESSION_SECRET = 'test-secret-do-not-use-in-production';
 });
 
 beforeEach(() => {
@@ -64,6 +68,7 @@ describe('POST /api/auth/change-password', () => {
       { password_hash: await hashPassword('actualpassword') },
     ]);
     vi.mocked(query).mockResolvedValueOnce([]); // update statement
+    vi.mocked(query).mockResolvedValueOnce([]); // invalidateOtherSessions
     const { POST } = await import('@/app/api/auth/change-password/route');
 
     const res = await POST(
@@ -71,9 +76,14 @@ describe('POST /api/auth/change-password', () => {
     );
 
     expect(res.status).toBe(200);
-    expect(query).toHaveBeenLastCalledWith(
+    expect(query).toHaveBeenCalledWith(
       'update users set password_hash = ? where id = ?',
       expect.arrayContaining(['user-1'])
     );
+    expect(query).toHaveBeenCalledWith(
+      "update users set sessions_invalidated_at = datetime('now') where id = ?",
+      ['user-1']
+    );
+    expect(res.headers.get('set-cookie')).toContain('session=');
   });
 });

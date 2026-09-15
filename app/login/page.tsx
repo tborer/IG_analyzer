@@ -16,6 +16,11 @@ export default function LoginPage() {
       <h1 className="font-display text-3xl mb-8">Log in</h1>
       <AuthForm mode="login" />
       <p className="text-sm text-mist mt-6">
+        <Link href="/forgot-password" className="text-brass hover:underline">
+          Forgot password?
+        </Link>
+      </p>
+      <p className="text-sm text-mist mt-2">
         No account yet?{' '}
         <Link href="/signup" className="text-brass hover:underline">
           Sign up

@@ -8,7 +8,7 @@ against proven dating-profile archetypes, a coverage check on what the audit
 could and couldn't see, bio feedback with a rewrite, and prioritized next actions.
 
 For the prioritized backlog of everything not yet built (SEO, real Stripe
-billing, automated test coverage, auth hardening), see
+billing, automated test coverage), see
 [`OUTSTANDING_WORK.md`](./OUTSTANDING_WORK.md).
 
 ## Features
@@ -67,8 +67,17 @@ billing, automated test coverage, auth hardening), see
 **Accounts & auth**
 - Email/password signup and login, custom-built (bcrypt password hashing +
   signed JWT session cookie) — no third-party auth service.
+- Login throttling (`lib/login-rate-limit.ts`): email- and IP-based lockout
+  after repeated failed attempts.
+- Forgot password (`/forgot-password` → emailed link → `/reset-password`)
+  and best-effort email verification on signup (soft nudge, not enforced —
+  see `/dashboard`'s verification banner), both via Resend
+  (`lib/email.ts`). Reset/verification tokens are stored as SHA-256 hashes,
+  single-use, and short-lived.
+- Session revocation (`lib/auth.ts`): logging out invalidates that specific
+  session immediately; changing or resetting a password signs out every
+  *other* active session while keeping the current one valid.
 - Change password (current password required) from `/dashboard/settings`.
-- Logout clears the session cookie.
 
 **Rate limiting**
 - Per-user daily audit cap based on `users.plan`: 1/day on `free`, 5/day on
@@ -76,10 +85,19 @@ billing, automated test coverage, auth hardening), see
   when exceeded.
 
 **Dashboard**
-- `/dashboard` — submit a new audit and view the rendered result.
+- `/dashboard` — submit a new audit and view the rendered result; shows a
+  "resend verification email" banner until the account's email is verified.
 - `/dashboard/history` — past audits (headline, score, date) for the
   signed-in user, newest first.
 - `/dashboard/settings` — change password.
+
+**Analytics**
+- Plausible (`lib/analytics.ts`) — a script tag in the root layout plus an
+  isomorphic `trackEvent()` (client-side via `window.plausible`, server-side
+  via Plausible's HTTP Events API for conversion-critical events that
+  shouldn't be lost to ad blockers). No-ops entirely when `PLAUSIBLE_DOMAIN`
+  is unset. Tracked: `signup_started`, `signup_completed`,
+  `audit_submitted`, `audit_completed`.
 
 **SEO**
 - Canonical site URL resolution with zero required config
@@ -91,16 +109,25 @@ billing, automated test coverage, auth hardening), see
 - `/login`/`/signup` are crawlable but `noindex`; everything under
   `/dashboard` is `noindex` + disallowed.
 
+**Legal**
+- `/privacy` and `/terms` — privacy policy and Terms of Service, including
+  a refund/cancellation clause ahead of Stripe billing going live.
+
 **Testing**
-- Vitest smoke-test suite covering auth routes, change-password, the audit
-  route's validation/rate-limit/persistence paths, and core lib functions
-  (auth, rate-limit, bio-staleness, emoji), with DB/Anthropic calls mocked.
+- Vitest suite (81 tests as of this writing) covering auth routes
+  (signup/login/logout/change-password/forgot-password/reset-password/
+  verify-email/resend-verification), the audit route's
+  validation/rate-limit/persistence paths, and core lib functions (auth
+  incl. session revocation, rate-limit, bio-staleness, emoji, tokens,
+  password-reset, verification, analytics), with DB/Anthropic/Resend calls
+  mocked.
 
 **Not yet built** — see [`OUTSTANDING_WORK.md`](./OUTSTANDING_WORK.md) for
-full specs: real Stripe billing (plan is a manually-set DB flag today),
-login throttling, session revocation, forgot-password/email verification,
-a privacy policy/ToS, component and end-to-end tests, CI, and the search
--visibility work (custom domain, Search Console, content hub, analytics).
+full specs: real Stripe billing (plan is a manually-set DB flag today —
+Product/Price creation needs a real Stripe account, decided as monthly-only
+with Stripe Tax enabled), component and end-to-end tests, CI, and the
+remaining search-visibility work (custom domain — deliberately skipped for
+now, Search Console, content hub).
 
 ## Tech stack
 
@@ -110,9 +137,11 @@ a privacy policy/ToS, component and end-to-end tests, CI, and the search
   single `query()` helper in `lib/db.ts` (raw parameterized SQL, no ORM)
 - **Anthropic API** (`@anthropic-ai/sdk`) for the vision analysis, with
   `zod` for structured-output validation
-- Custom lightweight auth (bcrypt + signed JWT session cookie via `jose`) —
-  no third-party auth service required, minimal data stored (email +
-  password hash)
+- **Resend** for transactional email (password reset, email verification)
+- **Plausible** for analytics (script tag + HTTP Events API, no SDK)
+- Custom lightweight auth (bcrypt + signed JWT session cookie via `jose`,
+  with a DB-backed revocation check) — no third-party auth service
+  required, minimal data stored (email + password hash)
 - **Vitest** for testing
 - **npm** as the package manager (`package-lock.json` is committed)
 
@@ -128,19 +157,28 @@ no E2E framework yet, etc.).
 │   ├── api/
 │   │   ├── audit/route.ts        # POST — runs an audit (auth + rate-limit + Anthropic call + persist)
 │   │   └── auth/
-│   │       ├── signup/route.ts   # POST — create account, start session
-│   │       ├── login/route.ts    # POST — verify credentials, start session
-│   │       ├── logout/route.ts   # POST — clear session cookie
-│   │       └── change-password/route.ts  # POST — verify current password, update hash
+│   │       ├── signup/route.ts             # POST — create account, start session, fire verification email
+│   │       ├── login/route.ts              # POST — verify credentials, start session
+│   │       ├── logout/route.ts             # POST — revoke this session, clear cookie
+│   │       ├── change-password/route.ts    # POST — verify current password, update hash, sign out other sessions
+│   │       ├── forgot-password/route.ts    # POST — generic response, emails a reset link if the account exists
+│   │       ├── reset-password/route.ts     # POST — redeem a reset token, update password, sign out other sessions
+│   │       ├── verify-email/route.ts       # POST — redeem an email-verification token
+│   │       └── resend-verification/route.ts # POST — re-send the verification email
 │   ├── dashboard/
 │   │   ├── layout.tsx            # noindex/nofollow metadata for everything under /dashboard
-│   │   ├── page.tsx              # new-audit page (renders UploadForm)
+│   │   ├── page.tsx              # new-audit page (renders UploadForm + verification banner)
 │   │   ├── history/page.tsx      # past audits list, newest first
 │   │   └── settings/page.tsx     # change-password page
 │   ├── login/page.tsx            # login page (renders AuthForm)
 │   ├── signup/page.tsx           # signup page (renders AuthForm)
+│   ├── forgot-password/page.tsx  # request a password-reset email
+│   ├── reset-password/page.tsx   # consume a reset token, set a new password
+│   ├── verify-email/page.tsx     # consume an email-verification token
+│   ├── privacy/page.tsx          # privacy policy
+│   ├── terms/page.tsx            # Terms of Service (incl. refund/cancellation clause)
 │   ├── page.tsx                  # public landing page (hero, how-it-works, FAQ, JSON-LD)
-│   ├── layout.tsx                # root layout — fonts, global metadata (OG/Twitter/canonical)
+│   ├── layout.tsx                # root layout — fonts, global metadata, Plausible script tag
 │   ├── globals.css               # Tailwind entry + global styles
 │   ├── icon.tsx                  # build-time-generated favicon (next/og)
 │   ├── opengraph-image.tsx       # build-time-generated social-share image (next/og)
@@ -155,11 +193,21 @@ no E2E framework yet, etc.).
 │   ├── CoverageChecklist.tsx     # generic checklist UI (used for profile coverage + archetype coverage)
 │   ├── AuthForm.tsx              # shared login/signup form (mode prop switches behavior)
 │   ├── ChangePasswordForm.tsx    # change-password form
+│   ├── ForgotPasswordForm.tsx    # request a reset link
+│   ├── ResetPasswordForm.tsx     # set a new password from a reset token
+│   ├── VerifyEmailStatus.tsx     # redeems a verification token on /verify-email
+│   ├── VerifyEmailBanner.tsx     # "resend verification email" banner on /dashboard
 │   └── DashboardNav.tsx          # authenticated-area nav bar + logout
 ├── lib/                          # Server + shared logic, no React
 │   ├── anthropic.ts              # Claude call: prompt, zod schemas, archetype/red-flag constants, runProfileAudit()
-│   ├── auth.ts                   # password hashing, JWT session issue/verify, session cookie config, getCurrentUserId()
+│   ├── auth.ts                   # password hashing, JWT session issue/verify + revocation, session cookie config
 │   ├── db.ts                     # lazy-initialized Turso client + query() helper
+│   ├── email.ts                  # Resend wrapper (sendEmail) — throws on failure rather than swallowing it
+│   ├── tokens.ts                 # random token generation + SHA-256 hashing, shared by reset/verification
+│   ├── password-reset.ts         # request/redeem password-reset tokens
+│   ├── verification.ts           # send/redeem email-verification tokens
+│   ├── analytics.ts              # isomorphic Plausible trackEvent()
+│   ├── login-rate-limit.ts       # email/IP login lockout (recordLoginAttempt, isLockedOut)
 │   ├── rate-limit.ts             # daily audit cap by plan (dailyAuditLimit, getUserPlan, getAuditsUsedToday)
 │   ├── bio-staleness.ts          # pure function comparing current vs. prior transcribed bios
 │   ├── emoji.ts                  # deterministic, grapheme-aware emoji-density calculation
@@ -169,16 +217,27 @@ no E2E framework yet, etc.).
 │   ├── api/
 │   │   ├── audit.test.ts
 │   │   ├── auth-routes.test.ts
-│   │   └── change-password.test.ts
+│   │   ├── change-password.test.ts
+│   │   └── auth/
+│   │       ├── login.test.ts
+│   │       ├── logout.test.ts
+│   │       ├── forgot-password.test.ts
+│   │       ├── reset-password.test.ts
+│   │       ├── verify-email.test.ts
+│   │       └── resend-verification.test.ts
 │   └── lib/
 │       ├── auth.test.ts
 │       ├── bio-staleness.test.ts
 │       ├── emoji.test.ts
-│       └── rate-limit.test.ts
+│       ├── rate-limit.test.ts
+│       ├── tokens.test.ts
+│       ├── password-reset.test.ts
+│       ├── verification.test.ts
+│       └── analytics.test.ts
 ├── scripts/
 │   └── init-db.mjs               # applies schema.sql idempotently (npm run db:init); also adds missing columns
-├── schema.sql                    # source of truth for the `users` and `audits` tables
-├── .env.example                  # required env vars, no real values
+├── schema.sql                    # source of truth for all tables
+├── .env.example                  # required/optional env vars, no real values
 ├── next.config.mjs               # Server Actions body-size limit (15mb) — no other custom config
 ├── tailwind.config.ts            # brand color palette, font families, grain background
 ├── vitest.config.mts             # Vitest config (node environment, `@/` path alias)
@@ -187,6 +246,7 @@ no E2E framework yet, etc.).
 ├── package.json / package-lock.json
 ├── README.md                     # this file
 ├── OUTSTANDING_WORK.md           # prioritized, spec-level backlog of everything not yet built
+├── LAUNCH_PLAN.md                # §2.10 launch distribution plan (post-§4)
 ├── FOLLOWUP.md                   # superseded by OUTSTANDING_WORK.md, kept for history
 ├── CLAUDE.md / AGENTS.md         # coding-agent project instructions
 └── .env.local                    # (gitignored) your local env values, created from .env.example
@@ -197,9 +257,14 @@ no E2E framework yet, etc.).
 ```bash
 npm install
 cp .env.example .env.local   # fill in TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, SESSION_SECRET, ANTHROPIC_API_KEY
-npm run db:init              # applies schema.sql to your Turso database
+npm run db:init               # applies schema.sql to your Turso database
 npm run dev
 ```
+
+`RESEND_API_KEY`/`RESEND_FROM_EMAIL` and `PLAUSIBLE_DOMAIN` are optional
+locally — email sending fails loudly if attempted without a key, and
+analytics silently no-ops without a domain, so neither is required just to
+run the app. Stripe vars aren't used by any code path yet (§4 isn't built).
 
 Create the Turso database first if you haven't:
 
@@ -216,13 +281,23 @@ production build), `npm run lint` (Next's ESLint config).
 
 ## Data model
 
-Two tables, defined in `schema.sql`:
+Defined in `schema.sql`:
 
-- `users` — id, email, password_hash, plan (`free` or `paid`), created_at
+- `users` — id, email, password_hash, plan (`free` or `paid`),
+  stripe_customer_id, stripe_subscription_id, subscription_status,
+  current_period_end (all §4, unused until billing ships),
+  email_verified_at (nullable), sessions_invalidated_at (nullable —
+  session-revocation cutoff), created_at.
 - `audits` — id, user_id, bio_text, photo_count, result (json text),
   transcribed_bio, created_at. `transcribed_bio` is the bio exactly as read
   by the model each audit, kept only to detect an unchanged bio across
   audits (`lib/bio-staleness.ts`) — not shown in the UI as its own field.
+- `login_attempts` — email/IP-based login lockout log.
+- `revoked_sessions` — per-session logout denylist (`sid` → revoked_at).
+- `password_reset_tokens` / `email_verification_tokens` — SHA-256-hashed,
+  single-use, short-lived tokens for the two email flows.
+- `processed_stripe_events` — webhook idempotency table (§4, unused until
+  the webhook handler is built).
 
 Photos themselves are **not** stored — they're sent to the Anthropic API for
 analysis and discarded. Only the generated JSON result is persisted, keeping
@@ -240,16 +315,20 @@ update users set plan = 'paid' where email = 'someone@example.com';
 
 `/api/audit` enforces a per-user daily cap based on `users.plan`: **1/day on
 free, 5/day on paid** (`lib/rate-limit.ts`). Exceeding it returns a 429 with
-a message telling the user when to come back. There's no separate login
-throttle yet.
+a message telling the user when to come back. Login attempts are separately
+throttled by email and IP (`lib/login-rate-limit.ts`).
 
 ## Account
 
 - `/dashboard/history` lists past audits (headline, score, date) for the
   signed-in user, newest first.
 - `/dashboard/settings` lets a signed-in user change their password (current
-  password required). There's no email-based "forgot password" flow —
-  losing your password currently means losing the account.
+  password required) — this signs out every other active session.
+- Forgotten a password? `/forgot-password` emails a reset link
+  (`/reset-password?token=...`), no account required to recover access.
+- New signups get a best-effort verification email; unverified accounts
+  stay fully usable (soft nudge, not enforced), with a resend affordance on
+  `/dashboard`.
 
 ## SEO
 
@@ -265,33 +344,69 @@ throttle yet.
 - Root layout sets `metadataBase`, Open Graph, and Twitter Card metadata.
   The landing page adds `WebApplication` + `FAQPage` JSON-LD, reflecting
   content that's actually visible on the page (no undisclosed markup).
-- No analytics/conversion tracking yet — deliberately deferred until there's
-  a paid acquisition channel to measure.
+- Plausible analytics (see Features above) — privacy-first, no
+  cookie-consent banner needed.
 
 ## Deploying
 
 1. Push this repo to GitHub.
 2. Import it into Vercel.
-3. Add the four env vars from `.env.example` in the Vercel project settings
-   (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`).
+3. Add the env vars from `.env.example` in the Vercel project settings:
+   - Required: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`.
+   - Email (§1.5, password reset + verification): `RESEND_API_KEY`, `RESEND_FROM_EMAIL`.
+   - Analytics (§2.8, optional — no-ops if unset): `PLAUSIBLE_DOMAIN`.
+   - Billing (§4, not live yet — test mode only): `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+     `STRIPE_PRICE_ID_MONTHLY`.
 4. Run `npm run db:init` once (locally, pointed at your production Turso database)
    to create the tables before first use. Safe to re-run — it only adds
-   what's missing (e.g. the `plan` column) rather than erroring on existing tables.
+   what's missing rather than erroring on existing tables.
 
-## Testing
+## Testing Stripe webhooks locally
 
-```bash
-npm test
-```
+Not built yet (§4.5) — once the webhook handler exists:
 
-Smoke tests (Vitest) cover the auth routes, change-password, the audit
-route's validation/rate-limit/persistence paths, and the core auth/rate-limit
-library functions. External calls (DB, Anthropic) are mocked — no live
-Turso or Anthropic credentials are needed to run them.
+1. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-## Where to go next
+2. In a separate terminal, run:
+   ```bash
+   stripe listen --forward-to localhost:3000/api/webhooks/stripe
+   ```
 
-See [`OUTSTANDING_WORK.md`](./OUTSTANDING_WORK.md) for the full,
-spec-level backlog (auth/legal hardening, search visibility, automated
-testing, and Stripe billing) — it supersedes the short list that used to
-live here.
+3. To trigger specific events:
+   ```bash
+   stripe trigger checkout.session.completed
+   stripe trigger customer.subscription.created
+   stripe trigger customer.subscription.updated
+   stripe trigger customer.subscription.deleted
+   ```
+
+This lets you develop and manually verify webhook logic without deploying
+or waiting for real card transactions.
+
+## Stripe Integration
+
+**Plan:** monthly subscription only (§4.2 — no annual tier for now).
+
+**Tax (§4.10):** decided — enable Stripe Tax (automatic calculation/remittance)
+rather than handling sales tax manually. Wire `automatic_tax: { enabled: true }`
+into the Checkout Session once §4.3 (checkout flow) is built. Per the same
+item's acceptance criteria, don't take live payment before the Terms of
+Service's refund/cancellation policy (already added, see `/terms`) ships —
+test mode is fine without it.
+
+Make sure to swap test-mode keys with live-mode keys before deploying to
+production — a critical step to avoid accidental charges on test cards or
+failed payments in production.
+
+### Deploy-Day Checklist
+- [ ] Verify `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and price IDs are correctly set
+- [ ] Confirm test keys are used in preview/dev environments and live keys in production
+- [ ] Double-check that no live secret keys are used with `NODE_ENV !== 'production'`
+- [ ] Ensure no test keys are used in production environments
+
+See [`OUTSTANDING_WORK.md`](./OUTSTANDING_WORK.md) for the full, spec-level
+backlog (search visibility, automated testing, and the remaining Stripe
+billing items) — it supersedes any shorter list that used to live here.

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
+import { PLAUSIBLE_SCRIPT_DOMAIN } from '@/lib/analytics';
 import './globals.css';
 
 const fraunces = Fraunces({
@@ -66,6 +67,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`}>
       <body className="bg-ink text-bone font-body antialiased bg-grain min-h-screen">
         {children}
+        {PLAUSIBLE_SCRIPT_DOMAIN && (
+          <script defer data-domain={PLAUSIBLE_SCRIPT_DOMAIN} src="https://plausible.io/js/script.js" />
+        )}
       </body>
     </html>
   );

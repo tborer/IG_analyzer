@@ -1,56 +1,48 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { trackEvent } from '@/lib/analytics';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
+export default function ResetPasswordForm() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const token = useSearchParams().get('token') || '';
   const [password, setPassword] = useState('');
+  const [status, setStatus] = useState<'idle' | 'saving' | 'done'>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
-    if (mode === 'signup') trackEvent('signup_started');
+    setStatus('saving');
     try {
-      const res = await fetch(`/api/auth/${mode}`, {
+      const res = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ token, password }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || 'Something went wrong.');
-      router.push('/dashboard');
-      router.refresh();
+      setStatus('done');
+      setTimeout(() => router.push('/login'), 2000);
     } catch (err) {
       setError((err as Error).message);
-    } finally {
-      setLoading(false);
+      setStatus('idle');
     }
+  }
+
+  if (!token) {
+    return <p className="text-sm text-signal max-w-sm">This link is missing its token — request a new one from the forgot-password page.</p>;
+  }
+
+  if (status === 'done') {
+    return <p className="text-sm text-moss max-w-sm">Password updated. Redirecting to login…</p>;
   }
 
   return (
     <form onSubmit={submit} className="space-y-5 max-w-sm">
       <div>
-        <label htmlFor="email" className="eyebrow text-mist mb-2 block">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-inkraised border border-hair rounded-lg px-4 py-3 text-sm text-bone focus:border-brass/50"
-        />
-      </div>
-      <div>
         <label htmlFor="password" className="eyebrow text-mist mb-2 block">
-          Password
+          New password
         </label>
         <input
           id="password"
@@ -65,10 +57,10 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
       {error && <p className="text-sm text-signal">{error}</p>}
       <button
         type="submit"
-        disabled={loading}
+        disabled={status === 'saving'}
         className="w-full px-6 py-3 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 disabled:opacity-50 transition-colors"
       >
-        {loading ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}
+        {status === 'saving' ? 'Saving…' : 'Set new password'}
       </button>
     </form>
   );

@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { hashPassword, createSessionToken, SESSION_COOKIE, sessionCookieOptions } from '@/lib/auth';
+import { trackEvent } from '@/lib/analytics';
+import { sendVerificationEmail } from '@/lib/verification';
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json().catch(() => ({}));
@@ -29,6 +31,14 @@ export async function POST(req: NextRequest) {
     normalizedEmail,
     passwordHash,
   ]);
+
+  // Soft nudge only (§1.5): a slow/failed verification email must never
+  // block account creation -- unverified accounts stay fully usable.
+  sendVerificationEmail(userId, normalizedEmail).catch((err) => {
+    console.error('Failed to send verification email:', err);
+  });
+
+  trackEvent('signup_completed');
 
   const token = await createSessionToken(userId);
   const res = NextResponse.json({ ok: true });

@@ -5,6 +5,7 @@ import { query } from '@/lib/db';
 import { runProfileAudit, PhotoInput } from '@/lib/anthropic';
 import { dailyAuditLimit, getAuditsUsedToday, getUserPlan } from '@/lib/rate-limit';
 import { checkBioStaleness } from '@/lib/bio-staleness';
+import { trackEvent } from '@/lib/analytics';
 
 const PRIOR_BIOS_TO_CHECK = 5;
 
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
     }
   }
   const finalResult = { ...result, bioStaleness };
+  trackEvent('audit_completed');
 
   try {
     await query(
