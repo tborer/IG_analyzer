@@ -12,7 +12,8 @@ vi.mock('@/lib/auth', async (importOriginal) => {
 
 vi.mock('@/lib/rate-limit', () => ({
   dailyAuditLimit: vi.fn(),
-  getUserPlan: vi.fn(),
+  getEffectivePlan: vi.fn(),
+  getSubscriptionStatus: vi.fn(),
   getAuditsUsedToday: vi.fn(),
 }));
 
@@ -33,8 +34,8 @@ function formRequest(form: FormData) {
 }
 
 async function allowRateLimit() {
-  const { dailyAuditLimit, getUserPlan, getAuditsUsedToday } = await import('@/lib/rate-limit');
-  vi.mocked(getUserPlan).mockResolvedValue('free');
+  const { dailyAuditLimit, getEffectivePlan, getAuditsUsedToday } = await import('@/lib/rate-limit');
+  vi.mocked(getEffectivePlan).mockResolvedValue('free');
   vi.mocked(dailyAuditLimit).mockReturnValue(1);
   vi.mocked(getAuditsUsedToday).mockResolvedValue(0);
 }
@@ -51,15 +52,39 @@ describe('POST /api/audit', () => {
 
   it('blocks the request once the daily cap is used up', async () => {
     const { getCurrentUserId } = await import('@/lib/auth');
-    const { dailyAuditLimit, getUserPlan, getAuditsUsedToday } = await import('@/lib/rate-limit');
+    const { dailyAuditLimit, getEffectivePlan, getSubscriptionStatus, getAuditsUsedToday } =
+      await import('@/lib/rate-limit');
     vi.mocked(getCurrentUserId).mockResolvedValueOnce('user-1');
-    vi.mocked(getUserPlan).mockResolvedValueOnce('free');
+    vi.mocked(getEffectivePlan).mockResolvedValueOnce('free');
+    vi.mocked(getSubscriptionStatus).mockResolvedValueOnce(null);
     vi.mocked(dailyAuditLimit).mockReturnValueOnce(1);
     vi.mocked(getAuditsUsedToday).mockResolvedValueOnce(1);
     const { POST } = await import('@/app/api/audit/route');
 
     const res = await POST(formRequest(new FormData()));
+    const body = await res.json();
+
     expect(res.status).toBe(429);
+    expect(body.upgrade).toBe(true);
+  });
+
+  it('gives a past_due user a billing-specific message, not the generic free-tier one', async () => {
+    const { getCurrentUserId } = await import('@/lib/auth');
+    const { dailyAuditLimit, getEffectivePlan, getSubscriptionStatus, getAuditsUsedToday } =
+      await import('@/lib/rate-limit');
+    vi.mocked(getCurrentUserId).mockResolvedValueOnce('user-1');
+    vi.mocked(getEffectivePlan).mockResolvedValueOnce('free');
+    vi.mocked(getSubscriptionStatus).mockResolvedValueOnce('past_due');
+    vi.mocked(dailyAuditLimit).mockReturnValueOnce(1);
+    vi.mocked(getAuditsUsedToday).mockResolvedValueOnce(1);
+    const { POST } = await import('@/app/api/audit/route');
+
+    const res = await POST(formRequest(new FormData()));
+    const body = await res.json();
+
+    expect(res.status).toBe(429);
+    expect(body.billingIssue).toBe(true);
+    expect(body.error).toMatch(/payment/i);
   });
 
   it('rejects a request with no photos', async () => {
