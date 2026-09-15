@@ -2,8 +2,6 @@
 
 const SIZE = 96;
 const STROKE = 7;
-const RADIUS = (SIZE - STROKE) / 2;
-const CIRC = 2 * Math.PI * RADIUS;
 
 function colorForScore(score: number) {
   if (score >= 75) return '#5C8A5E'; // moss

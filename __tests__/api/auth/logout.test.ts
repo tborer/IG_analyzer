@@ -19,7 +19,9 @@ beforeEach(() => {
 describe('POST /api/auth/logout', () => {
   it('clears the cookie without touching the db when signed out', async () => {
     const { cookies } = await import('next/headers');
-    vi.mocked(cookies).mockResolvedValue({ get: () => undefined } as any);
+    vi.mocked(cookies).mockResolvedValue({
+      get: () => undefined,
+    } as unknown as Awaited<ReturnType<typeof cookies>>);
     const { query } = await import('@/lib/db');
     const { POST } = await import('@/app/api/auth/logout/route');
 
@@ -34,7 +36,9 @@ describe('POST /api/auth/logout', () => {
     const { cookies } = await import('next/headers');
     const { createSessionToken } = await import('@/lib/auth');
     const token = await createSessionToken('user-1');
-    vi.mocked(cookies).mockResolvedValue({ get: () => ({ value: token }) } as any);
+    vi.mocked(cookies).mockResolvedValue({
+      get: () => ({ value: token }),
+    } as unknown as Awaited<ReturnType<typeof cookies>>);
     const { query } = await import('@/lib/db');
     vi.mocked(query).mockResolvedValueOnce([]); // revokeSession insert
     const { POST } = await import('@/app/api/auth/logout/route');
