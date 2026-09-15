@@ -25,16 +25,38 @@ build` causes a real failure during static-page prerendering.
 ```
 npm test
 ```
-Runs `vitest run`. Expected output on success: every test file listed
-with a checkmark, ending in `Test Files  N passed`. Takes ~1-2s. External
-services (DB, Anthropic) are mocked in existing tests under `__tests__/`
-— follow that pattern for new tests rather than hitting real services.
+Runs `NODE_ENV=test vitest run` (the `NODE_ENV` override matters: this
+container's global `NODE_ENV=production` otherwise makes React resolve
+its production build, which doesn't support `act()` and breaks every
+component test). Expected output on success: every test file listed with
+a checkmark, ending in `Test Files  N passed`. Takes a few seconds.
+External services (DB, Anthropic, Resend, Stripe) are mocked in existing
+tests under `__tests__/` — follow that pattern for new tests rather than
+hitting real services. `npm run lint` runs a real standalone ESLint setup
+(Next.js 16 removed the `next lint` command entirely).
 
-**Known gap**: `npm run lint` (`next lint`) currently errors
-(`Invalid project directory provided, no such directory: .../lint`) for
-reasons not yet diagnosed — not part of the Build/Test gate above, and not
-a signal to trust either way until fixed. Don't add work fixing this
-unless a task specifically asks for it.
+**Component tests** (`*.test.tsx`) need a DOM: opt in per-file with a
+`// @vitest-environment jsdom` docblock as the first line (Vitest 4
+dropped the config-level `environmentMatchGlobs` option this would
+otherwise use). Note jsdom does not reliably enforce the `minLength` HTML
+attribute the way a real browser does (it does enforce `required`) — don't
+write a test asserting client-side blocking on `minLength` alone.
+
+**E2E tests** (`e2e/*.spec.ts`, `npm run test:e2e`) use real Playwright
++ Chromium against a local SQLite file DB, with `E2E_FAKE_ANTHROPIC=1`
+short-circuiting `lib/anthropic.ts` to a canned result. **They cannot run
+inside this specific container**: it's a hardened Alpine/musl image with
+no package manager at all (`apk` itself is absent), and Playwright's
+Chromium build requires glibc — it fails with `symbol not found` errors
+regardless of permissions, not a fixable dependency gap. This is a
+property of this sandbox, not the test code or a real CI runner (GitHub
+Actions' `ubuntu-latest` has glibc and installs Chromium normally) — the
+server-side half of the setup (DB init, signup, auth) was verified for
+real via direct HTTP calls against a running `next dev` in this same
+container, confirming the surrounding wiring is sound even though the
+browser-driven assertions themselves are unverified here. Don't burn
+retries trying to make Chromium work in this container; trust the actual
+CI run instead.
 
 ## Conventions
 - **Framework**: Next.js (App Router, TypeScript). Routes live under

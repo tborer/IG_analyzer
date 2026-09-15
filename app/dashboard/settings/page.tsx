@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getCurrentUserId } from '@/lib/auth';
 import { query } from '@/lib/db';
@@ -5,6 +6,10 @@ import { getEffectivePlan } from '@/lib/rate-limit';
 import DashboardNav from '@/components/DashboardNav';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import BillingSection from '@/components/BillingSection';
+
+export const metadata: Metadata = {
+  title: 'Settings',
+};
 
 export default async function SettingsPage() {
   const userId = await getCurrentUserId();

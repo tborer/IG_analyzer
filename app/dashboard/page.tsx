@@ -1,9 +1,14 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getCurrentUserId } from '@/lib/auth';
 import { query } from '@/lib/db';
 import DashboardNav from '@/components/DashboardNav';
 import UploadForm from '@/components/UploadForm';
 import VerifyEmailBanner from '@/components/VerifyEmailBanner';
+
+export const metadata: Metadata = {
+  title: 'New audit',
+};
 
 export default async function DashboardPage() {
   const userId = await getCurrentUserId();
