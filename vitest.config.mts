@@ -10,6 +10,17 @@ export default defineConfig({
     // option here.
     environment: 'node',
     setupFiles: ['./vitest.setup.ts'],
+    // e2e/ holds Playwright specs (also named *.spec.ts) -- exclude them
+    // here so Vitest doesn't try to run them with the wrong test runner.
+    // Vitest's `exclude` replaces its own default list rather than adding
+    // to it, so the usual defaults are repeated explicitly.
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{vite,vitest}.config.*',
+      'e2e/**',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

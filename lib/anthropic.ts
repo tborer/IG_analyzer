@@ -301,11 +301,58 @@ export type AuditRunResult = {
   transcribedBio: string | null;
 };
 
+// §3.3: E2E runs must not depend on live Anthropic credentials or burn
+// real API usage on every CI run. The audit route calls this server-side
+// (not from the browser), so Playwright's page.route() can't intercept
+// it -- a test-mode env flag read here is the correct interception point.
+function fakeAuditResult(photos: PhotoInput[]): AuditRunResult {
+  return {
+    result: {
+      overallScore: 78,
+      headline: 'E2E fixture result',
+      profileCoverage: [{ aspect: 'Bio / header', covered: true, note: 'Fixture data' }],
+      avatar: null,
+      displayName: null,
+      profileHeader: null,
+      gridCohesion: null,
+      photos: photos.map((_, index) => ({
+        index,
+        score: 80,
+        archetype: 'Solo close-up (face clarity)',
+        strengths: ['Clear, well-lit lead photo'],
+        issues: [],
+        datingSignal: 'Approachable',
+        verdict: 'feature' as const,
+      })),
+      recommendedOrder: photos.map((_, index) => index),
+      photoArchetypeCoverage: [
+        { archetype: 'Solo close-up (face clarity)', covered: true, recommendation: 'Keep it.' },
+      ],
+      bio: {
+        score: 70,
+        feedback: 'Fixture bio feedback.',
+        closestArchetype: 'Minimal',
+        rewriteSuggestion: 'Fixture rewrite suggestion.',
+        redFlags: [],
+        link: { present: false, value: null, signalsStatus: false, note: 'No link present.' },
+        emojiDensity: { emojiCount: 0, totalGraphemes: 0, ratio: 0, verdict: 'clean' as const },
+      },
+      contentStrategy: ['Fixture content strategy note.'],
+      topActions: ['Fixture top action.'],
+    },
+    transcribedBio: 'Fixture transcribed bio.',
+  };
+}
+
 export async function runProfileAudit(
   photos: PhotoInput[],
   bioText: string | undefined,
   platform: string
 ): Promise<AuditRunResult> {
+  if (process.env.E2E_FAKE_ANTHROPIC === '1') {
+    return fakeAuditResult(photos);
+  }
+
   const anthropic = getClient();
 
   const userContent: Anthropic.MessageParam['content'] = [
