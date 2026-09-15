@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const ORIGINAL_ENV = process.env.PLAUSIBLE_DOMAIN;
 

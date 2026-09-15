@@ -153,7 +153,7 @@ export default function UploadForm() {
           ))}
         </ul>
         <p className="text-xs text-mist mt-2">
-          Missing something is fine — the audit will call out what it couldn't assess.
+          Missing something is fine — the audit will call out what it couldn&apos;t assess.
         </p>
       </div>
 

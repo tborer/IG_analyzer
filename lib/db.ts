@@ -1,7 +1,6 @@
 import { createClient, type Client, type InArgs } from '@libsql/client';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __tursoClient: Client | undefined;
 }
 
@@ -26,6 +25,9 @@ function getClient(): Client {
   return global.__tursoClient;
 }
 
+// `any` default lets callers omit the generic entirely for call sites that
+// don't care about row shape; every real caller specifies T explicitly.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function query<T = any>(sql: string, params: InArgs = []): Promise<T[]> {
   const client = getClient();
   const result = await client.execute({ sql, args: params });

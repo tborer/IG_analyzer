@@ -32,7 +32,7 @@ export default function VerifyEmailBanner() {
         </button>
       )}
       {status === 'error' && (
-        <p className="text-xs text-signal w-full">Couldn't send it — try again in a moment.</p>
+        <p className="text-xs text-signal w-full">Couldn&apos;t send it — try again in a moment.</p>
       )}
     </div>
   );

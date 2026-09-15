@@ -15,7 +15,7 @@ export default function ForgotPasswordPage() {
       </Link>
       <h1 className="font-display text-3xl mb-4">Forgot your password?</h1>
       <p className="text-sm text-mist mb-8 max-w-sm">
-        Enter the email on your account and we'll send you a link to choose a new password.
+        Enter the email on your account and we&apos;ll send you a link to choose a new password.
       </p>
       <ForgotPasswordForm />
     </main>
