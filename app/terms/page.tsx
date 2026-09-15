@@ -31,7 +31,7 @@ export default function TermsOfService() {
       <section className="mb-8">
         <h2 className="text-2xl font-semibold mb-4">Liability Disclaimer</h2>
         <p className="mb-4">
-          Our service is provided "as is" without any warranties of any kind. 
+          Our service is provided &quot;as is&quot; without any warranties of any kind. 
           We do not guarantee any specific results from using our service. 
           We are not liable for any damages resulting from the use of our service.
         </p>
@@ -52,11 +52,11 @@ export default function TermsOfService() {
           If you subscribe to our premium service, you agree to our payment terms.
           We will charge your payment method on file for the subscription fee, billed monthly.
           You may cancel your subscription at any time; cancellation takes effect at the end of
-          your current billing period, and you'll retain access until then.
+          your current billing period, and you&apos;ll retain access until then.
         </p>
         <p className="mb-4">
           Subscription fees are non-refundable for partial billing periods. If you believe you
-          were charged in error, contact us within 7 days of the charge and we'll review it.
+          were charged in error, contact us within 7 days of the charge and we&apos;ll review it.
         </p>
         <p className="mb-4">
           If you have any questions about our payment terms, please contact us.

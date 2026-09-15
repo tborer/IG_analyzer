@@ -49,7 +49,6 @@ const jsonLd = {
 export default function LandingPage() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 sm:py-24">
-      {/* eslint-disable-next-line react/no-danger */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -77,8 +76,8 @@ export default function LandingPage() {
             {SITE_NAME} audits the Instagram people check before a first date.
           </h1>
           <p className="text-bone/75 text-lg leading-relaxed mb-8 max-w-lg">
-            Screenshot your profile — the photos don't need to be on your device. Get a
-            specific, photo-by-photo breakdown of what's working, what's missing, and
+            Screenshot your profile — the photos don&apos;t need to be on your device. Get a
+            specific, photo-by-photo breakdown of what&apos;s working, what&apos;s missing, and
             exactly what separates a forgettable grid from a different caliber of match.
           </p>
           <Link

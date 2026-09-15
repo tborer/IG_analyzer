@@ -20,7 +20,7 @@ export default async function DashboardPage() {
       <DashboardNav />
       {!isVerified && <VerifyEmailBanner />}
       <p className="eyebrow text-brass mb-3">New audit</p>
-      <h1 className="font-display text-3xl mb-10">Let's look at your profile.</h1>
+      <h1 className="font-display text-3xl mb-10">Let&apos;s look at your profile.</h1>
       <UploadForm />
     </main>
   );

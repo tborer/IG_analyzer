@@ -119,7 +119,7 @@ export default function AuditResults({
             <span
               className={`eyebrow ${result.displayName.usesRealName ? 'text-moss' : 'text-signal'}`}
             >
-              "{result.displayName.value}"
+              &quot;{result.displayName.value}&quot;
             </span>
           </div>
           <p className="text-sm text-bone/85">{result.displayName.note}</p>
@@ -135,7 +135,7 @@ export default function AuditResults({
         </div>
         {unscoredCount > 0 && (
           <p className="text-sm text-signal mb-4">
-            {unscoredCount} photo{unscoredCount > 1 ? 's' : ''} couldn't be scored — try re-running the audit.
+            {unscoredCount} photo{unscoredCount > 1 ? 's' : ''} couldn&apos;t be scored — try re-running the audit.
           </p>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -206,7 +206,7 @@ export default function AuditResults({
 
       {result.bioStaleness && (
         <div className="border border-brass/40 rounded-lg bg-brass/5 p-6">
-          <p className="eyebrow text-brass mb-2">Bio hasn't changed</p>
+          <p className="eyebrow text-brass mb-2">Bio hasn&apos;t changed</p>
           <p className="text-sm text-bone/85">{result.bioStaleness.note}</p>
         </div>
       )}
