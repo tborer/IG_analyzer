@@ -58,6 +58,18 @@ describe('session tokens', () => {
     expect(await verifySessionToken(token)).toBeNull();
   });
 
+  it('accepts a token issued after the user-wide invalidation cutoff', async () => {
+    const { query } = await import('@/lib/db');
+    const { createSessionToken, verifySessionToken } = await import('@/lib/auth');
+    vi.mocked(query).mockResolvedValueOnce([]); // not individually revoked
+    // Cutoff far in the past relative to a token issued "now".
+    const pastCutoff = new Date(Date.now() - 60_000).toISOString().replace('T', ' ').slice(0, 19);
+    vi.mocked(query).mockResolvedValueOnce([{ sessions_invalidated_at: pastCutoff }]);
+
+    const token = await createSessionToken('user-123');
+    expect(await verifySessionToken(token)).toBe('user-123');
+  });
+
   it('getSessionId extracts the sid claim from a valid token', async () => {
     const { createSessionToken, getSessionId } = await import('@/lib/auth');
     const token = await createSessionToken('user-123');
