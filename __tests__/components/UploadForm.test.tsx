@@ -56,4 +56,49 @@ describe('UploadForm', () => {
     const submitButton = await screen.findByRole('button', { name: 'Reviewing your profile…' });
     expect(submitButton).toBeDisabled();
   });
+
+  it('renders an upgrade link when the daily cap is hit (§4.11)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        json: () => Promise.resolve({ error: "You've used your free audit for today.", upgrade: true }),
+      })
+    );
+    const user = userEvent.setup();
+    const { default: UploadForm } = await import('@/components/UploadForm');
+    const { container } = render(<UploadForm />);
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, makeFile());
+    await screen.findByText('Screenshots (1/12)');
+    await user.click(screen.getByRole('button', { name: 'Run the audit' }));
+
+    expect(await screen.findByRole('link', { name: 'Upgrade for more audits' })).toHaveAttribute(
+      'href',
+      '/dashboard/settings'
+    );
+  });
+
+  it('renders a distinct billing link for a past_due user (§4.11 edge case)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        json: () => Promise.resolve({ error: 'There was a problem with your last payment.', billingIssue: true }),
+      })
+    );
+    const user = userEvent.setup();
+    const { default: UploadForm } = await import('@/components/UploadForm');
+    const { container } = render(<UploadForm />);
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, makeFile());
+    await screen.findByText('Screenshots (1/12)');
+    await user.click(screen.getByRole('button', { name: 'Run the audit' }));
+
+    expect(await screen.findByRole('link', { name: 'Update billing' })).toBeInTheDocument();
+  });
 });
