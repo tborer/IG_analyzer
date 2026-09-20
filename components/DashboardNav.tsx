@@ -13,11 +13,11 @@ export default function DashboardNav() {
   }
 
   return (
-    <header className="flex items-center justify-between mb-12">
+    <header className="flex flex-wrap items-center justify-between gap-y-3 mb-12">
       <Link href="/" className="font-display text-lg tracking-tight">
         Caliber
       </Link>
-      <nav className="flex items-center gap-6">
+      <nav className="flex items-center gap-4 sm:gap-6 flex-wrap">
         <Link href="/dashboard" className="eyebrow text-mist hover:text-bone transition-colors">
           New audit
         </Link>

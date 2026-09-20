@@ -175,7 +175,7 @@ export default function UploadForm() {
               <img src={url} alt="" className="w-full h-full object-cover" />
               <button
                 onClick={() => removeAt(i)}
-                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-ink/80 border border-hair text-bone text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute top-1.5 right-1.5 w-8 h-8 rounded-full bg-ink/90 border border-hair text-bone text-xs flex items-center justify-center opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                 aria-label="Remove screenshot"
               >
                 ✕
