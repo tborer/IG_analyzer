@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import ScoreDial from '@/components/ScoreDial';
 import SocialProof from '@/components/SocialProof';
+import FAQAccordion from '@/components/FAQAccordion';
 import { SITE_NAME } from '@/lib/site';
 
 const FAQ = [
@@ -168,14 +169,7 @@ export default function LandingPage() {
 
       <section className="mb-24">
         <h2 className="font-display text-2xl mb-8">Questions</h2>
-        <div className="space-y-8">
-          {FAQ.map((item) => (
-            <div key={item.q} className="border border-hair rounded-lg p-6 hover:border-brass/50 transition-colors">
-              <h3 className="font-display text-lg mb-2">{item.q}</h3>
-              <p className="text-sm text-bone/70 leading-relaxed">{item.a}</p>
-            </div>
-          ))}
-        </div>
+        <FAQAccordion items={FAQ} />
       </section>
 
       <section className="mb-24">
