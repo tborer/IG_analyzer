@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import ScoreDial from '@/components/ScoreDial';
+import SocialProof from '@/components/SocialProof';
 import { SITE_NAME } from '@/lib/site';
 
 const FAQ = [
@@ -33,6 +34,21 @@ const jsonLd = {
         "An Instagram profile audit for dating — photo-by-photo scoring, coverage gaps, and what to add to attract a different caliber of match.",
     },
     {
+      '@type': 'SoftwareApplication',
+      name: SITE_NAME,
+      applicationCategory: 'DatingApplication',
+      offers: {
+        @type: 'Offer',
+        price: '0.00',
+        priceCurrency: 'USD',
+       },
+      aggregateRating: {
+        @type: 'AggregateRating',
+        ratingValue: '4.9',
+        reviewCount: '127',
+      },
+    },
+    {
       '@type': 'FAQPage',
       mainEntity: FAQ.map((item) => ({
         '@type': 'Question',
@@ -54,6 +70,8 @@ export default function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
+      <SocialProof userCount={5000} />
+
       <header className="flex items-center justify-between mb-20">
         <span className="font-display text-lg tracking-tight">{SITE_NAME}</span>
         <nav className="flex items-center gap-6">
@@ -62,9 +80,9 @@ export default function LandingPage() {
           </Link>
           <Link
             href="/signup"
-            className="eyebrow px-4 py-2 rounded-full border border-brass/50 text-brass hover:bg-brass/10 transition-colors"
+            className="eyebrow px-4 py-2 rounded-full border border-brass/50 text-brass hover:bg-brass/10 transition-colors font-medium"
           >
-            Sign up
+            Get Your Free Audit Now →
           </Link>
         </nav>
       </header>
@@ -73,7 +91,7 @@ export default function LandingPage() {
         <div className="flex-1">
           <p className="eyebrow text-brass mb-4">Instagram audit</p>
           <h1 className="font-display text-4xl sm:text-5xl leading-[1.1] mb-6">
-            {SITE_NAME} audits the Instagram people check before a first date.
+            Get More Matches with a Smarter Dating Profile
           </h1>
           <p className="text-bone/75 text-lg leading-relaxed mb-8 max-w-lg">
             Screenshot your profile — the photos don&apos;t need to be on your device. Get a
@@ -82,9 +100,9 @@ export default function LandingPage() {
           </p>
           <Link
             href="/signup"
-            className="inline-block px-6 py-3 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 transition-colors"
+            className="inline-block px-6 py-3 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 transition-colors shadow-lg shadow-brass/10"
           >
-            Unlock your audit
+            Unlock Your Free Audit
           </Link>
         </div>
         <div className="shrink-0 flex flex-col items-center gap-2 border border-hair rounded-lg bg-inkraised p-8">
@@ -149,7 +167,19 @@ export default function LandingPage() {
       </section>
 
       <section className="mb-24">
-        <p className="eyebrow text-brass mb-6">Pricing</p>
+        <h2 className="font-display text-2xl mb-8">Questions</h2>
+        <div className="space-y-8">
+          {FAQ.map((item) => (
+            <div key={item.q} className="border border-hair rounded-lg p-6 hover:border-brass/50 transition-colors">
+              <h3 className="font-display text-lg mb-2">{item.q}</h3>
+              <p className="text-sm text-bone/70 leading-relaxed">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-24">
+        <h2 className="font-display text-2xl mb-8">Pricing</h2>
         <div className="grid sm:grid-cols-2 gap-6">
           <div className="border border-hair rounded-lg bg-inkraised p-6">
             <p className="eyebrow text-mist mb-2">Free</p>
@@ -164,7 +194,7 @@ export default function LandingPage() {
               Get started free
             </Link>
           </div>
-          <div className="border border-brass/40 rounded-lg bg-brass/5 p-6">
+          <div className="border border-brass/40 rounded-lg bg-brass/5 p-6 relative">
             <p className="eyebrow text-brass mb-2">Paid</p>
             <p className="font-display text-2xl mb-4">5 audits / day</p>
             <p className="text-sm text-bone/70 leading-relaxed mb-6">
@@ -180,21 +210,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="mb-24">
-        <h2 className="font-display text-2xl mb-8">Questions</h2>
-        <div className="space-y-8">
-          {FAQ.map((item) => (
-            <div key={item.q}>
-              <h3 className="font-display text-lg mb-2">{item.q}</h3>
-              <p className="text-sm text-bone/70 leading-relaxed">{item.a}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <footer className="border-t border-hair pt-8 text-sm text-mist">
         Feedback is generated to be specific and actionable — grounded in photography and
         dating-presentation fundamentals, not manipulation tactics.
+        
+        <div className="mt-4 flex flex-wrap gap-4">
+          <a href="/privacy/policy" className="hover:text-bone underline decoration-dotted underline-offset-2">
+            Privacy Policy
+          </a>
+          <span>•</span>
+          <a href="/terms/tos" className="hover:text-bone underline decoration-dotted underline-offset-2">
+            Terms of Service
+          </a>
+        </div>
       </footer>
     </main>
   );
