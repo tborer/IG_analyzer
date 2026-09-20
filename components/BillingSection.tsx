@@ -7,11 +7,13 @@ export default function BillingSection({
   subscriptionStatus,
   currentPeriodEnd,
   hasStripeCustomer,
+  stripeEnabled,
 }: {
   effectivePlan: 'free' | 'paid';
   subscriptionStatus: string | null;
   currentPeriodEnd: string | null;
   hasStripeCustomer: boolean;
+  stripeEnabled: boolean;
 }) {
   const [loading, setLoading] = useState<'checkout' | 'portal' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,13 +51,17 @@ export default function BillingSection({
       {error && <p className="text-sm text-signal mb-3">{error}</p>}
 
       {!hasStripeCustomer ? (
-        <button
-          onClick={() => go('/api/billing/checkout', 'checkout')}
-          disabled={loading !== null}
-          className="px-5 py-2.5 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 disabled:opacity-50 transition-colors"
-        >
-          {loading === 'checkout' ? 'Redirecting…' : 'Upgrade'}
-        </button>
+        stripeEnabled ? (
+          <button
+            onClick={() => go('/api/billing/checkout', 'checkout')}
+            disabled={loading !== null}
+            className="px-5 py-2.5 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 disabled:opacity-50 transition-colors"
+          >
+            {loading === 'checkout' ? 'Redirecting…' : 'Upgrade'}
+          </button>
+        ) : (
+          <p className="text-sm text-mist">Payments aren&apos;t available yet — check back soon.</p>
+        )
       ) : (
         <button
           onClick={() => go('/api/billing/portal', 'portal')}

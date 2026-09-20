@@ -2,6 +2,8 @@ import Link from 'next/link';
 import ScoreDial from '@/components/ScoreDial';
 import PageViewTracker from '@/components/PageViewTracker';
 import TrackedCtaLink from '@/components/TrackedCtaLink';
+import WaitlistModal from '@/components/WaitlistModal';
+import ContactModal from '@/components/ContactModal';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { getAllBlogPosts } from '@/lib/blog';
 
@@ -86,6 +88,7 @@ const jsonLd = {
 
 export default function LandingPage() {
   const recentPosts = getAllBlogPosts().slice(0, 3);
+  const waitlistEnabled = process.env.ENABLE_WAITLIST === 'true';
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 sm:py-24">
@@ -104,6 +107,7 @@ export default function LandingPage() {
           <Link href="/login" className="eyebrow text-mist hover:text-bone transition-colors">
             Log in
           </Link>
+          {waitlistEnabled && <WaitlistModal />}
           <TrackedCtaLink
             href="/signup"
             event="click_signup"
@@ -345,6 +349,7 @@ export default function LandingPage() {
           <Link href="/terms" className="hover:text-bone transition-colors">
             Terms
           </Link>
+          <ContactModal />
         </nav>
       </footer>
     </main>

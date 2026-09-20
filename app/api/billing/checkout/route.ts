@@ -5,6 +5,10 @@ import { getStripeClient } from '@/lib/stripe';
 import { SITE_URL } from '@/lib/site';
 
 export async function POST() {
+  if (process.env.ENABLE_STRIPE !== 'true') {
+    return NextResponse.json({ error: 'Payments are not available yet.' }, { status: 503 });
+  }
+
   const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json({ error: 'Sign in first.' }, { status: 401 });

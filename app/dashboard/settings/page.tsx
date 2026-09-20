@@ -36,6 +36,7 @@ export default async function SettingsPage() {
         subscriptionStatus={user?.subscription_status ?? null}
         currentPeriodEnd={user?.current_period_end ?? null}
         hasStripeCustomer={Boolean(user?.stripe_customer_id)}
+        stripeEnabled={process.env.ENABLE_STRIPE === 'true'}
       />
 
       <p className="eyebrow text-brass mb-3">Password</p>
