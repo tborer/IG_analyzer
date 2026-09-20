@@ -34,7 +34,7 @@ tooling — treat volume/difficulty claims below as directional, not measured.
 
 ## Content calendar → blog mapping
 
-| Blog post (see `content/blog/`) | Slug | Primary keyword targeted |
+| Blog post (see `lib/blog.ts`) | Slug | Primary keyword targeted |
 |---|---|---|
 | The Instagram Bio Checklist Daters Actually Read | `instagram-bio-for-dating` | instagram bio tips for dating |
 | What Your Instagram Grid Says About You in the First 3 Seconds | `instagram-grid-strategy-matching` | instagram grid strategy |
@@ -54,6 +54,30 @@ Future candidates (not yet written): `instagram-photo-tips-single-men`,
   make that section worth a full section of the page).
 - Between posts: manually curated "related reading" links where topically
   relevant — no recommendation engine needed at this post count.
+
+## UTM conventions for launch distribution (§3.2, §6.1)
+
+No attribution tracking is wired into the app yet (§3.2 in
+`docs/seo-ux-improvements.md` is still open — this is just the naming
+convention to use once it is, and for any manual link-sharing before then).
+Standard `source`/`medium`/`campaign` structure:
+
+```
+https://<domain>/signup?utm_source=<source>&utm_medium=<medium>&utm_campaign=<campaign>&utm_content=<content>
+```
+
+Examples for the §6.1 launch distribution list:
+
+- Reddit post in r/dating_advice:
+  `?utm_source=reddit&utm_medium=social&utm_campaign=launch&utm_content=r_dating_advice`
+- X/Twitter thread:
+  `?utm_source=twitter&utm_medium=social&utm_campaign=launch&utm_content=dating_tech_thread`
+- Product Hunt:
+  `?utm_source=producthunt&utm_medium=referral&utm_campaign=launch`
+
+Keep `utm_campaign` stable per distinct push (e.g. `launch`, not a
+per-post value) so results roll up cleanly; use `utm_content` to
+distinguish individual posts/threads within the same campaign.
 
 ## Next steps once a custom domain + Search Console exist
 
