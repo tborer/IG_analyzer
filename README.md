@@ -300,7 +300,10 @@ npm run dev
 `RESEND_API_KEY`/`RESEND_FROM_EMAIL` and `PLAUSIBLE_DOMAIN` are optional
 locally — email sending fails loudly if attempted without a key, and
 analytics silently no-ops without a domain, so neither is required just to
-run the app. Stripe vars aren't used by any code path yet (§4 isn't built).
+run the app. Stripe vars aren't used unless `ENABLE_STRIPE=true`. The SMTP
+vars (`SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_FROM`,
+`CONTACT_TO_EMAIL`) are only needed to exercise the waitlist or contact
+forms; the waitlist button itself is hidden unless `ENABLE_WAITLIST=true`.
 
 Create the Turso database first if you haven't:
 
@@ -394,7 +397,14 @@ throttled by email and IP (`lib/login-rate-limit.ts`).
    - Billing: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
      `STRIPE_PRICE_ID_MONTHLY`. Checkout, the customer portal, and the
      webhook are wired up; use test-mode keys until you're ready to take
-     live payment.
+     live payment, and leave `ENABLE_STRIPE` unset (or `false`) until then —
+     it gates the Upgrade button and the checkout endpoint. Set it to
+     `true` when you're ready to go live.
+   - Waitlist and contact forms (share the same SMTP setup): `SMTP_HOST`,
+     `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`,
+     `CONTACT_TO_EMAIL` (the inbox that receives both). The waitlist button
+     itself only shows when `ENABLE_WAITLIST=true`; the footer's Contact
+     link always shows.
 4. Run `npm run db:init` once (locally, pointed at your production Turso database)
    to create the tables before first use. Safe to re-run — it only adds
    what's missing rather than erroring on existing tables.
