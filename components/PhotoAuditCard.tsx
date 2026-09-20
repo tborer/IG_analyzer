@@ -24,7 +24,13 @@ export default function PhotoAuditCard({
     <div className="border border-hair rounded-lg bg-inkraised overflow-hidden flex flex-col">
       <div className="relative aspect-[4/5] bg-black/30">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={previewUrl} alt={`Photo ${audit.index + 1}`} className="w-full h-full object-cover" />
+        <img
+          src={previewUrl}
+          alt={`Photo ${audit.index + 1}`}
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover"
+        />
         {rank !== undefined && (
           <div className="absolute top-2 left-2 font-mono text-xs bg-ink/80 border border-hair rounded px-1.5 py-0.5 text-bone">
             #{rank}

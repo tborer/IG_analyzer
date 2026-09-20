@@ -1,82 +1,100 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
+import { SITE_NAME } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Terms of Service',
-  description: 'Learn about our terms of service and acceptable use policies.',
+  description: `Acceptable use, liability, and billing terms for ${SITE_NAME}.`,
+  alternates: { canonical: '/terms' },
 };
 
 export default function TermsOfService() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Terms of Service</h1>
-      
-      <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Acceptable Use</h2>
-        <p className="mb-4">
-          By using our service, you agree to use it for lawful purposes only. 
-          You may not use our service to engage in any activity that violates 
-          applicable laws or regulations.
-        </p>
-        <p className="mb-4">
-          You agree not to use our service to:
-        </p>
-        <ul className="list-disc pl-5 mb-4">
-          <li>Post any content that is illegal, threatening, or harassing</li>
-          <li>Engage in spamming or other abusive behavior</li>
-          <li>Attempt to gain unauthorized access to our systems</li>
-          <li>Use our service for any purpose other than its intended use</li>
-        </ul>
-      </section>
-      
-      <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Liability Disclaimer</h2>
-        <p className="mb-4">
-          Our service is provided &quot;as is&quot; without any warranties of any kind. 
-          We do not guarantee any specific results from using our service. 
-          We are not liable for any damages resulting from the use of our service.
-        </p>
-      </section>
-      
-      <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Account Termination</h2>
-        <p className="mb-4">
-          We reserve the right to terminate your account at any time for any reason. 
-          If we terminate your account, we will delete your data as soon as reasonably 
-          possible, except for data we are required to retain by law.
-        </p>
-      </section>
-      
-      <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Payment Terms</h2>
-        <p className="mb-4">
-          If you subscribe to our premium service, you agree to our payment terms.
-          We will charge your payment method on file for the subscription fee, billed monthly.
-          You may cancel your subscription at any time; cancellation takes effect at the end of
-          your current billing period, and you&apos;ll retain access until then.
-        </p>
-        <p className="mb-4">
-          Subscription fees are non-refundable for partial billing periods. If you believe you
-          were charged in error, contact us within 7 days of the charge and we&apos;ll review it.
-        </p>
-        <p className="mb-4">
-          If you have any questions about our payment terms, please contact us.
-        </p>
-      </section>
-      
-      <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Changes to Terms</h2>
-        <p className="mb-4">
-          We reserve the right to change these terms at any time. 
-          If we make changes, we will update this page and notify you by email.
-        </p>
-      </section>
-      
-      <section className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Contact Us</h2>
-        <p className="mb-4">
-          If you have any questions about these terms, please contact us.
-        </p>
-      </section>
-    </div>
+    <main className="max-w-3xl mx-auto px-6 py-16 sm:py-24">
+      <Link href="/" className="font-display text-lg tracking-tight mb-16 inline-block">
+        {SITE_NAME}
+      </Link>
+      <p className="eyebrow text-brass mb-4">Legal</p>
+      <h1 className="font-display text-3xl mb-4">Terms of Service</h1>
+      <p className="text-sm text-mist mb-12">Last updated: September 2026</p>
+
+      <div className="space-y-10">
+        <section>
+          <h2 className="font-display text-xl mb-3">Who can use this</h2>
+          <p className="text-sm text-bone/70 leading-relaxed">
+            You must be at least 18 years old to create an account. By signing up, you confirm
+            you meet that requirement.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-display text-xl mb-3">Acceptable use</h2>
+          <p className="text-sm text-bone/70 leading-relaxed mb-4">
+            You agree to use {SITE_NAME} for lawful purposes only, and not to:
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-sm text-bone/70 leading-relaxed">
+            <li>Upload photos or bios of anyone other than yourself without their consent</li>
+            <li>Attempt to gain unauthorized access to our systems or another user&apos;s account</li>
+            <li>Use the service to harass, impersonate, or defraud anyone</li>
+            <li>Scrape, reverse-engineer, or resell the audit output at scale</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="font-display text-xl mb-3">What the audit is (and isn&apos;t)</h2>
+          <p className="text-sm text-bone/70 leading-relaxed">
+            {SITE_NAME} is a critique tool — feedback grounded in photography and
+            dating-presentation fundamentals. It does not guarantee more matches, dates, or any
+            other outcome. The service is provided &quot;as is,&quot; without warranties of any
+            kind, and we are not liable for outcomes from acting (or not acting) on the
+            feedback it gives you.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-display text-xl mb-3">Your account</h2>
+          <p className="text-sm text-bone/70 leading-relaxed">
+            You&apos;re responsible for keeping your password secure and for activity on your
+            account. We may suspend or terminate an account that violates these terms; where
+            reasonably possible we&apos;ll delete associated data on termination, except what
+            we&apos;re required to retain by law.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-display text-xl mb-3">Billing</h2>
+          <p className="text-sm text-bone/70 leading-relaxed mb-4">
+            The free plan requires no payment. If you subscribe to the paid plan, you authorize
+            us to charge your payment method on file on a recurring monthly basis until you
+            cancel.
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5 text-sm text-bone/70 leading-relaxed">
+            <li>Cancel any time; you keep paid access through the end of the current billing period</li>
+            <li>Fees are non-refundable for partial billing periods</li>
+            <li>If you believe you were charged in error, contact us within 7 days of the charge</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="font-display text-xl mb-3">Changes to these terms</h2>
+          <p className="text-sm text-bone/70 leading-relaxed">
+            We may update these terms as the product changes. Material changes will be reflected
+            here with an updated date; continued use after a change means you accept the update.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-display text-xl mb-3">Contact</h2>
+          <p className="text-sm text-bone/70 leading-relaxed">
+            Questions about these terms? Reply to any transactional email you&apos;ve received
+            from us. See our{' '}
+            <Link href="/privacy" className="text-brass hover:underline">
+              Privacy Policy
+            </Link>{' '}
+            for how we handle your data.
+          </p>
+        </section>
+      </div>
+    </main>
   );
 }

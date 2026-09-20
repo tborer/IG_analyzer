@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { trackEvent } from '@/lib/analytics';
 
 export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
@@ -62,6 +63,19 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
           className="w-full bg-inkraised border border-hair rounded-lg px-4 py-3 text-sm text-bone focus:border-brass/50"
         />
       </div>
+      {mode === 'signup' && (
+        <p className="text-xs text-mist leading-relaxed">
+          By creating an account you agree to our{' '}
+          <Link href="/terms" className="text-brass hover:underline">
+            Terms
+          </Link>{' '}
+          and{' '}
+          <Link href="/privacy" className="text-brass hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+      )}
       {error && <p className="text-sm text-signal">{error}</p>}
       <button
         type="submit"

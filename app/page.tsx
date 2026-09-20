@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import ScoreDial from '@/components/ScoreDial';
-import { SITE_NAME } from '@/lib/site';
+import PageViewTracker from '@/components/PageViewTracker';
+import TrackedCtaLink from '@/components/TrackedCtaLink';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
+import { getAllBlogPosts } from '@/lib/blog';
 
 const FAQ = [
   {
@@ -19,6 +22,10 @@ const FAQ = [
     q: 'Do you store my screenshots?',
     a: 'No. Screenshots are analyzed and then discarded — only the written audit is saved to your account, so you can look back at it later.',
   },
+  {
+    q: 'Do I need the paid plan to track changes over time?',
+    a: "No — the free plan already saves every audit to your history, so you can compare runs. Paid just raises the daily limit from one audit to five, useful if you want to re-check a profile the same day after making changes, or you're auditing more than one profile.",
+  },
 ];
 
 const jsonLd = {
@@ -31,6 +38,21 @@ const jsonLd = {
       operatingSystem: 'Web',
       description:
         "An Instagram profile audit for dating — photo-by-photo scoring, coverage gaps, and what to add to attract a different caliber of match.",
+      offers: [
+        {
+          '@type': 'Offer',
+          name: 'Free',
+          price: '0',
+          priceCurrency: 'USD',
+          description: '1 audit per day, no card required.',
+        },
+        {
+          '@type': 'Offer',
+          name: 'Paid',
+          priceCurrency: 'USD',
+          description: '5 audits per day, for tracking changes over time.',
+        },
+      ],
     },
     {
       '@type': 'FAQPage',
@@ -43,29 +65,53 @@ const jsonLd = {
         },
       })),
     },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: `${SITE_URL}/`,
+        },
+      ],
+    },
+    {
+      '@type': 'SiteNavigationElement',
+      name: ['Blog', 'Log in', 'Sign up'],
+      url: [`${SITE_URL}/blog`, `${SITE_URL}/login`, `${SITE_URL}/signup`],
+    },
   ],
 };
 
 export default function LandingPage() {
+  const recentPosts = getAllBlogPosts().slice(0, 3);
+
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 sm:py-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <PageViewTracker event="viewed_landing" />
 
       <header className="flex items-center justify-between mb-20">
         <span className="font-display text-lg tracking-tight">{SITE_NAME}</span>
         <nav className="flex items-center gap-6">
+          <Link href="/blog" className="eyebrow text-mist hover:text-bone transition-colors">
+            Blog
+          </Link>
           <Link href="/login" className="eyebrow text-mist hover:text-bone transition-colors">
             Log in
           </Link>
-          <Link
+          <TrackedCtaLink
             href="/signup"
+            event="click_signup"
+            eventProps={{ location: 'nav' }}
             className="eyebrow px-4 py-2 rounded-full border border-brass/50 text-brass hover:bg-brass/10 transition-colors"
           >
             Sign up
-          </Link>
+          </TrackedCtaLink>
         </nav>
       </header>
 
@@ -73,19 +119,22 @@ export default function LandingPage() {
         <div className="flex-1">
           <p className="eyebrow text-brass mb-4">Instagram audit</p>
           <h1 className="font-display text-4xl sm:text-5xl leading-[1.1] mb-6">
-            {SITE_NAME} audits the Instagram people check before a first date.
+            Your Instagram is making — or breaking — your dates.
           </h1>
           <p className="text-bone/75 text-lg leading-relaxed mb-8 max-w-lg">
             Screenshot your profile — the photos don&apos;t need to be on your device. Get a
             specific, photo-by-photo breakdown of what&apos;s working, what&apos;s missing, and
             exactly what separates a forgettable grid from a different caliber of match.
           </p>
-          <Link
+          <TrackedCtaLink
             href="/signup"
+            event="click_signup"
+            eventProps={{ location: 'hero' }}
             className="inline-block px-6 py-3 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 transition-colors"
           >
-            Unlock your audit
-          </Link>
+            Get your free audit
+          </TrackedCtaLink>
+          <p className="eyebrow text-mist mt-3">Free audit resets daily — no card required</p>
         </div>
         <div className="shrink-0 flex flex-col items-center gap-2 border border-hair rounded-lg bg-inkraised p-8">
           <ScoreDial score={82} size={120} />
@@ -110,7 +159,19 @@ export default function LandingPage() {
             {
               n: '03',
               title: 'Get the specific audit',
-              body: "Scored, photo by photo, with what to fix and what kind of photo you're missing entirely.",
+              body: (
+                <>
+                  Scored, photo by photo, with what to fix and what kind of photo you&apos;re
+                  missing entirely — plus a{' '}
+                  <Link
+                    href="/blog/instagram-bio-for-dating"
+                    className="text-brass hover:text-brass/80 underline underline-offset-2 transition-colors"
+                  >
+                    full bio review
+                  </Link>
+                  , not just the photos.
+                </>
+              ),
             },
           ].map((item) => (
             <div key={item.n}>
@@ -148,6 +209,48 @@ export default function LandingPage() {
         ))}
       </section>
 
+      <section className="mb-24 border-y border-hair py-12">
+        <p className="eyebrow text-brass mb-6">Why trust the audit</p>
+        <div className="grid sm:grid-cols-3 gap-8 mb-10">
+          {[
+            {
+              title: 'Photos never stored',
+              body: 'Screenshots are analyzed and then discarded. Only the written audit is saved to your account.',
+            },
+            {
+              title: 'Dating-specific criteria',
+              body: 'Scored against proven dating-profile photo archetypes and bio structures — not generic "looks nice" aesthetics.',
+            },
+            {
+              title: 'No manipulation tactics',
+              body: 'Feedback is grounded in photography and dating-presentation fundamentals, not engagement-baiting tricks.',
+            },
+          ].map((item) => (
+            <div key={item.title}>
+              <h3 className="font-display text-base mb-2">{item.title}</h3>
+              <p className="text-sm text-bone/70 leading-relaxed">{item.body}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+          <p className="text-bone/75 text-sm leading-relaxed max-w-md">
+            See exactly what the audit checks for —{' '}
+            <Link href="/blog" className="text-brass hover:text-brass/80 underline underline-offset-2 transition-colors">
+              read the methodology on the blog
+            </Link>
+            .
+          </p>
+          <TrackedCtaLink
+            href="/signup"
+            event="click_signup"
+            eventProps={{ location: 'mid_page' }}
+            className="inline-block px-5 py-2.5 border border-brass/40 rounded-lg text-brass hover:bg-brass/10 transition-colors whitespace-nowrap"
+          >
+            Start your free audit
+          </TrackedCtaLink>
+        </div>
+      </section>
+
       <section className="mb-24">
         <p className="eyebrow text-brass mb-6">Pricing</p>
         <div className="grid sm:grid-cols-2 gap-6">
@@ -157,44 +260,92 @@ export default function LandingPage() {
             <p className="text-sm text-bone/70 leading-relaxed mb-6">
               The full audit, no card required — one profile review per day.
             </p>
-            <Link
+            <TrackedCtaLink
               href="/signup"
+              event="click_signup"
+              eventProps={{ location: 'pricing_free' }}
               className="inline-block px-5 py-2.5 border border-hair rounded-lg hover:border-brass/50 transition-colors"
             >
               Get started free
-            </Link>
+            </TrackedCtaLink>
           </div>
           <div className="border border-brass/40 rounded-lg bg-brass/5 p-6">
             <p className="eyebrow text-brass mb-2">Paid</p>
             <p className="font-display text-2xl mb-4">5 audits / day</p>
             <p className="text-sm text-bone/70 leading-relaxed mb-6">
-              For tracking changes over time or auditing more than one profile a day.
+              Track your progress as you make changes, or audit more than one profile — five
+              runs a day instead of one.
             </p>
-            <Link
+            <TrackedCtaLink
               href="/signup"
+              event="click_signup"
+              eventProps={{ location: 'pricing_paid' }}
               className="inline-block px-5 py-2.5 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 transition-colors"
             >
               Sign up to upgrade
-            </Link>
+            </TrackedCtaLink>
           </div>
         </div>
       </section>
 
       <section className="mb-24">
         <h2 className="font-display text-2xl mb-8">Questions</h2>
-        <div className="space-y-8">
-          {FAQ.map((item) => (
-            <div key={item.q}>
-              <h3 className="font-display text-lg mb-2">{item.q}</h3>
-              <p className="text-sm text-bone/70 leading-relaxed">{item.a}</p>
-            </div>
+        <div className="divide-y divide-hair border-t border-b border-hair">
+          {FAQ.map((item, i) => (
+            <details key={item.q} className="group py-5" open={i === 0}>
+              <summary className="flex items-center justify-between gap-4 cursor-pointer list-none font-display text-lg">
+                {item.q}
+                <span className="shrink-0 text-brass transition-transform group-open:rotate-45 font-mono text-xl leading-none">
+                  +
+                </span>
+              </summary>
+              <p className="text-sm text-bone/70 leading-relaxed mt-3">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-24">
+        <div className="flex items-center justify-between mb-6">
+          <p className="eyebrow text-brass">From the blog</p>
+          <Link href="/blog" className="eyebrow text-mist hover:text-bone transition-colors">
+            View all
+          </Link>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-6">
+          {recentPosts.map((post) => (
+            <Link
+              key={post.slug}
+              href={`/blog/${post.slug}`}
+              className="block border border-hair rounded-lg p-5 hover:border-brass/40 transition-colors"
+            >
+              <h3 className="font-display text-base mb-2 leading-snug">{post.title}</h3>
+              <p className="text-xs text-bone/60 leading-relaxed">{post.description}</p>
+            </Link>
           ))}
         </div>
       </section>
 
       <footer className="border-t border-hair pt-8 text-sm text-mist">
-        Feedback is generated to be specific and actionable — grounded in photography and
-        dating-presentation fundamentals, not manipulation tactics.
+        <p className="leading-relaxed mb-6 max-w-lg">
+          Feedback is generated to be specific and actionable — grounded in photography and
+          dating-presentation fundamentals, not manipulation tactics. Screenshots are never
+          stored; only the written audit is.
+        </p>
+        <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 eyebrow">
+          <Link href="/blog" className="hover:text-bone transition-colors">
+            Blog
+          </Link>
+          <Link href="/comparison" className="hover:text-bone transition-colors">
+            Comparison
+          </Link>
+          <Link href="/privacy" className="hover:text-bone transition-colors">
+            Privacy
+          </Link>
+          <Link href="/terms" className="hover:text-bone transition-colors">
+            Terms
+          </Link>
+        </nav>
       </footer>
     </main>
   );

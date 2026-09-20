@@ -223,12 +223,17 @@ analytics (§2.8) or ad pixels (§2.9) are added, since those may need
 consent gating.
 
 **Acceptance criteria.**
-- [ ] `/privacy` and `/terms` render, are linked from footer + signup, and
-  are listed in `sitemap.xml`.
-- [ ] Privacy policy accurately reflects current data handling (verified
+- [x] `/privacy` and `/terms` render, are linked from footer + signup, and
+  are listed in `sitemap.xml`. (2026-09-20: pages existed but were
+  unstyled and unlinked from anywhere — restyled to match the brand
+  system, linked from the landing-page footer and from `AuthForm`'s
+  signup mode, expanded with GDPR/CCPA, cookie, and sub-processor
+  content. See `docs/seo-ux-improvements.md` §4.1/§4.2.)
+- [x] Privacy policy accurately reflects current data handling (verified
   against `schema.sql`, `lib/anthropic.ts`, and the audit route).
 - [ ] Legal review (or at minimum a human read-through, not just AI-drafted
-  boilerplate) before going live with real payments.
+  boilerplate) before going live with real payments. **Still open** — the
+  2026-09-20 pass is AI-drafted, same caveat as before.
 
 ### 1.2 Login throttling / brute-force protection
 
@@ -554,11 +559,15 @@ discovery given the product has no existing brand or backlinks.
 - Add every published article URL to `app/sitemap.ts`'s route list.
 
 **Acceptance criteria.**
-- [ ] At least 3 launch articles published, each targeting a distinct
-  long-tail query, each linking to `/signup`.
-- [ ] All article URLs present in `sitemap.xml` with correct `lastmod`.
+- [x] At least 3 launch articles published, each targeting a distinct
+  long-tail query, each linking to `/signup`. (2026-09-20: shipped via
+  `docs/seo-ux-improvements.md` §1.3 — `lib/blog.ts` +
+  `app/blog/page.tsx` + `app/blog/[slug]/page.tsx`. Used plain
+  TypeScript data instead of MDX, see that doc for the rationale.)
+- [x] All article URLs present in `sitemap.xml` with correct `lastmod`.
 - [ ] Articles pass the same Lighthouse/Core Web Vitals bar as the landing
-  page (2.7) — long-form content shouldn't regress load performance.
+  page (2.7) — not measured, blocked on having a real deployed URL
+  (§2.1/§2.7 both need the custom domain first).
 
 ### 2.5 Internal linking
 
@@ -642,9 +651,15 @@ optimize paid acquisition spend (2.9) without it.
 
 **Acceptance criteria.**
 - [ ] Funnel events visible in the chosen analytics dashboard within a day
-  of shipping.
+  of shipping. Not verified — no `PLAUSIBLE_DOMAIN` is configured in this
+  environment. (2026-09-20: event coverage now includes `viewed_landing`
+  and `click_signup` — the latter tagged with a `location` prop
+  distinguishing nav/hero/mid-page/pricing CTAs — alongside the existing
+  `signup_started`/`signup_completed`/`audit_submitted`/`audit_completed`.
+  See `components/PageViewTracker.tsx`, `components/TrackedCtaLink.tsx`.)
 - [ ] No new consent-banner requirement introduced without it being built
-  alongside (if the chosen tool needs one).
+  alongside (if the chosen tool needs one). Still true — Plausible is
+  cookieless, no banner added or needed.
 
 ### 2.9 SEM (paid search) readiness
 
