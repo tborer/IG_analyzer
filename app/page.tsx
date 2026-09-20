@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import ScoreDial from '@/components/ScoreDial';
+import PageViewTracker from '@/components/PageViewTracker';
+import TrackedCtaLink from '@/components/TrackedCtaLink';
 import { SITE_NAME, SITE_URL } from '@/lib/site';
 import { getAllBlogPosts } from '@/lib/blog';
 
@@ -91,6 +93,7 @@ export default function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <PageViewTracker event="viewed_landing" />
 
       <header className="flex items-center justify-between mb-20">
         <span className="font-display text-lg tracking-tight">{SITE_NAME}</span>
@@ -101,12 +104,14 @@ export default function LandingPage() {
           <Link href="/login" className="eyebrow text-mist hover:text-bone transition-colors">
             Log in
           </Link>
-          <Link
+          <TrackedCtaLink
             href="/signup"
+            event="click_signup"
+            eventProps={{ location: 'nav' }}
             className="eyebrow px-4 py-2 rounded-full border border-brass/50 text-brass hover:bg-brass/10 transition-colors"
           >
             Sign up
-          </Link>
+          </TrackedCtaLink>
         </nav>
       </header>
 
@@ -121,12 +126,14 @@ export default function LandingPage() {
             specific, photo-by-photo breakdown of what&apos;s working, what&apos;s missing, and
             exactly what separates a forgettable grid from a different caliber of match.
           </p>
-          <Link
+          <TrackedCtaLink
             href="/signup"
+            event="click_signup"
+            eventProps={{ location: 'hero' }}
             className="inline-block px-6 py-3 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 transition-colors"
           >
             Get your free audit
-          </Link>
+          </TrackedCtaLink>
           <p className="eyebrow text-mist mt-3">Free audit resets daily — no card required</p>
         </div>
         <div className="shrink-0 flex flex-col items-center gap-2 border border-hair rounded-lg bg-inkraised p-8">
@@ -233,12 +240,14 @@ export default function LandingPage() {
             </Link>
             .
           </p>
-          <Link
+          <TrackedCtaLink
             href="/signup"
+            event="click_signup"
+            eventProps={{ location: 'mid_page' }}
             className="inline-block px-5 py-2.5 border border-brass/40 rounded-lg text-brass hover:bg-brass/10 transition-colors whitespace-nowrap"
           >
             Start your free audit
-          </Link>
+          </TrackedCtaLink>
         </div>
       </section>
 
@@ -251,12 +260,14 @@ export default function LandingPage() {
             <p className="text-sm text-bone/70 leading-relaxed mb-6">
               The full audit, no card required — one profile review per day.
             </p>
-            <Link
+            <TrackedCtaLink
               href="/signup"
+              event="click_signup"
+              eventProps={{ location: 'pricing_free' }}
               className="inline-block px-5 py-2.5 border border-hair rounded-lg hover:border-brass/50 transition-colors"
             >
               Get started free
-            </Link>
+            </TrackedCtaLink>
           </div>
           <div className="border border-brass/40 rounded-lg bg-brass/5 p-6">
             <p className="eyebrow text-brass mb-2">Paid</p>
@@ -265,12 +276,14 @@ export default function LandingPage() {
               Track your progress as you make changes, or audit more than one profile — five
               runs a day instead of one.
             </p>
-            <Link
+            <TrackedCtaLink
               href="/signup"
+              event="click_signup"
+              eventProps={{ location: 'pricing_paid' }}
               className="inline-block px-5 py-2.5 bg-brass text-ink font-medium rounded-lg hover:bg-brass/90 transition-colors"
             >
               Sign up to upgrade
-            </Link>
+            </TrackedCtaLink>
           </div>
         </div>
       </section>
