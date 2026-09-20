@@ -2,7 +2,66 @@
 
 **Created:** 2026-08-25  
 **Author:** Autonomous Dev Loop (Expert SEO/UX Analysis)  
-**Status:** Awaiting implementation
+**Status:** Partially implemented (2026-09-20) — see below.
+
+## Implementation status (2026-09-20)
+
+Worked section by section per user request. Checked off what's genuinely
+code-shippable; several items are explicitly deferred pending decisions
+that only the business owner can make (flagged below and confirmed with
+the user before this pass).
+
+**Done:**
+- §1.2 Enhanced structured data (BreadcrumbList, SiteNavigationElement,
+  Offer entries) — skipped AggregateRating/Review, no real review data.
+- §1.3 Blog/content hub — 3 launch articles, `/blog` + `/blog/[slug]`,
+  Article JSON-LD, sitemap entries. Plain TS data instead of MDX (no new
+  build dependency for a handful of articles).
+- §1.4 Keyword strategy doc — `docs/keywords.md`.
+- §1.5 FAQ accordion — `details`/`summary`, same content array as the
+  JSON-LD so they can't drift.
+- §2.1 Social proof — **user decision: generic, non-quantified trust
+  signals only, no invented user counts or testimonials.** Shipped as a
+  "Why trust the audit" section.
+- §2.2 CTA hierarchy — headline, primary CTA microcopy, honest urgency
+  line (grounded in the real daily-reset limit), mid-page CTA.
+- §2.3 Comparison page — `/comparison`, honest category-level comparison,
+  no fabricated claims about named competitors.
+- §2.6 Mobile UX — fixed an unreachable remove-screenshot button on touch
+  devices, lazy-loaded result photos, fixed a dashboard-nav overflow risk
+  on narrow phones. Full Lighthouse pass blocked on §1.1 (needs a real
+  deployed URL).
+- §2.7 Footer trust signals — expanded footer, restyled + linked
+  `/privacy` and `/terms` (previously unstyled and unlinked from
+  anywhere).
+- §3.1 Analytics events — added `viewed_landing` and `click_signup`
+  (with CTA-location tagging) alongside pre-existing signup/audit events.
+- §4.1 / §4.2 Privacy policy + ToS — restyled, expanded with GDPR/CCPA,
+  cookie policy, sub-processor disclosure; added an inline agreement line
+  to signup (see DECISION in commit history re: line vs. checkbox).
+- §4.3 Login throttling — already implemented pre-existing
+  (`lib/login-rate-limit.ts`), verified still in place.
+- §5.1 Headline — picked a variant directly (no A/B-test infra exists to
+  run a real experiment; that's §6.2-level infrastructure, not done).
+- §5.2 Bio strategy visibility — linked from "How it works" step 3.
+- §5.3 Pricing communication — reframed paid-tier copy, added a
+  clarifying FAQ entry (verified against actual history-page behavior).
+
+**Explicitly deferred (needs a business decision, not an implementation
+detail):**
+- §1.1 Custom domain, §2.2 Google Search Console/Bing — needs an actual
+  domain purchase and account access; **user said skip for now.**
+- §2.4 Email lead magnet (gated PDF, exit-intent popup, email
+  automation) — **user said skip this pass**, too large to fit alongside
+  everything else.
+- §2.5 Case studies/results — depends on real user results; same
+  no-fabrication constraint as §2.1, and no real data exists yet.
+- §6.1 / §6.2 Launch distribution and ongoing A/B monitoring — process/
+  infrastructure work, not implementable as a one-off code change.
+
+Section 3.2 (conversion attribution / UTM tracking) and the rest of
+Section 6 were not started — flagged here for a future pass rather than
+silently dropped.
 
 ---
 
