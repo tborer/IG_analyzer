@@ -39,9 +39,13 @@ tooling — treat volume/difficulty claims below as directional, not measured.
 | The Instagram Bio Checklist Daters Actually Read | `instagram-bio-for-dating` | instagram bio tips for dating |
 | What Your Instagram Grid Says About You in the First 3 Seconds | `instagram-grid-strategy-matching` | instagram grid strategy |
 | The Dating Profile Audit Checklist | `dating-profile-audit-checklist` | dating profile audit checklist |
+| Instagram Photo Tips for Single Men Actually Trying to Date | `instagram-photo-tips-single-men` | instagram photo tips for single men |
+| The Instagram Mistakes That Are Quietly Hurting Your Dating Life | `instagram-mistakes-that-hurt-your-dating-life` | instagram mistakes that hurt your dating life |
 
-Future candidates (not yet written): `instagram-photo-tips-single-men`,
-`instagram-mistakes-that-hurt-your-dating-life`.
+All 5 initial candidate posts are now written (2026-09-21). Each links to
+1-2 topically related posts via `related` on `BlogPost` (rendered as a
+"Related reading" section on the article page) — the internal-linking
+strategy below is now implemented, not just planned.
 
 ## Internal linking strategy
 

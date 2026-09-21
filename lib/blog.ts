@@ -17,6 +17,7 @@ export type BlogPost = {
   publishedAt: string;
   readingTime: string;
   body: BlogBlock[];
+  related?: string[];
 };
 
 export const BLOG_POSTS: BlogPost[] = [
@@ -133,6 +134,7 @@ export const BLOG_POSTS: BlogPost[] = [
         text: 'A specific, photo-by-photo breakdown — what is working, what is missing, and exactly which archetype to shoot next — is what Caliber\'s audit produces from a set of screenshots. No need to dig up or re-upload original photos.',
       },
     ],
+    related: ['instagram-photo-tips-single-men'],
   },
   {
     slug: 'dating-profile-audit-checklist',
@@ -178,6 +180,125 @@ export const BLOG_POSTS: BlogPost[] = [
         text: 'This is the part self-review can\'t fully replace: it\'s hard to score your own photos against dating-specific archetypes objectively, and easy to miss your own bio red flags because you know the context that makes each line feel justified. That\'s the specific gap Caliber\'s audit is built to close — screenshot your profile, and get a photo-by-photo, bio-by-bio breakdown scored against exactly this checklist.',
       },
     ],
+    related: ['instagram-mistakes-that-hurt-your-dating-life'],
+  },
+  {
+    slug: 'instagram-photo-tips-single-men',
+    title: 'Instagram Photo Tips for Single Men Actually Trying to Date',
+    description:
+      'The specific photo mistakes that quietly work against men on Instagram — the mirror selfie, the group-photo lead, the missing full-body shot — and what to shoot instead.',
+    publishedAt: '2026-09-21',
+    readingTime: '5 min read',
+    body: [
+      {
+        type: 'p',
+        text: "Men's dating profiles tend to fail for a narrower, more specific set of reasons than \"the photos aren't good enough.\" It's rarely about needing better-looking photos — it's about a handful of repeatable patterns that show up on grid after grid. Here's what actually moves the needle, starting with the most common offender.",
+      },
+      { type: 'h2', text: 'The mirror selfie problem' },
+      {
+        type: 'p',
+        text: "A gym or bathroom mirror selfie is the single most common lead photo on men's profiles, and it's costing more than it seems to. The phone in frame, the flat overhead lighting, the same flexed angle — none of it is disqualifying on its own, but it reads as the default photo, not a chosen one. If it's the first thing someone sees, it's doing the opposite of its job.",
+      },
+      { type: 'h2', text: "Leading with a group photo" },
+      {
+        type: 'p',
+        text: "The second-most common mistake: opening with a photo of you and three friends at a bar, where a stranger has to guess which one you are. Group photos have a place further down a profile — they show you have a life with people in it — but as the first photo, the ambiguity works against you before anyone's even sure who they're looking at.",
+      },
+      { type: 'h2', text: "The gap almost nobody fixes: no full-body photo" },
+      {
+        type: 'p',
+        text: "This is the one worth fixing first if it applies to you. A set of six photos that's all close-up shots from the chest up reads as withholding information, even unintentionally — and it sets up a first meeting to feel like a bait-and-switch regardless of what's actually true. One full-body photo, in decent lighting, closes that gap completely.",
+      },
+      { type: 'h2', text: 'Six photo types worth having, in order of leverage' },
+      {
+        type: 'ul',
+        items: [
+          'Solo close-up — clear face, no sunglasses or hat, no group crop',
+          'Full body — the single highest-leverage fix for most men\'s profiles',
+          'Activity or hobby — something you actually do, not a posed stock shot',
+          'Social / with others — you, clearly identifiable, not buried in a group',
+          'Candid / genuine expression — a real moment, not a posed lean-into-camera',
+          'Style or professional — one photo that shows effort in how you present',
+        ],
+      },
+      { type: 'h2', text: 'Heavy filtering reads as insecurity, not polish' },
+      {
+        type: 'p',
+        text: "A filter that smooths skin, slims a jaw, or brightens eyes unnaturally doesn't read as a better photo — it reads as a photo someone didn't trust to work on its own. Light color correction is fine. Anything a viewer can consciously notice as \"edited\" is working against the authenticity a dating-context photo needs to land.",
+      },
+      {
+        type: 'quote',
+        text: "A profile that needs heavy editing to look approachable hasn't solved the actual problem — it's hidden it.",
+      },
+      {
+        type: 'p',
+        text: "None of this requires a professional shoot. It requires checking your existing grid against this list and noticing what's actually missing, which is exactly what Caliber's audit does automatically — photo-by-photo, archetype by archetype, from screenshots of the profile you already have.",
+      },
+    ],
+    related: ['instagram-grid-strategy-matching', 'dating-profile-audit-checklist'],
+  },
+  {
+    slug: 'instagram-mistakes-that-hurt-your-dating-life',
+    title: 'The Instagram Mistakes That Are Quietly Hurting Your Dating Life',
+    description:
+      'A specific rundown of the photo, bio, and coverage mistakes that work against you on Instagram before a first date even happens — not generic advice, the actual checklist.',
+    publishedAt: '2026-09-21',
+    readingTime: '6 min read',
+    body: [
+      {
+        type: 'p',
+        text: "Most people never audit their own Instagram the way a first date does. Before someone swipes back, or shows up to meet you, they're checking your grid — and forming an opinion from a handful of specific, well-documented mistakes. Here's the full list, grouped by where it actually shows up.",
+      },
+      { type: 'h2', text: 'Photo mistakes' },
+      {
+        type: 'ul',
+        items: [
+          "The lead photo isn't a clear, solo shot",
+          "The whole set is one setting, one outfit — no variety",
+          'No full-body photo anywhere in the set',
+          'Heavy filtering that reads as inauthentic rather than polished',
+          'A group photo used as the lead image, with no clear indication who you are',
+          "Photos that look dated or inconsistent with the rest of the set",
+        ],
+      },
+      { type: 'h2', text: 'Bio mistakes' },
+      {
+        type: 'p',
+        text: 'These show up so often in dating-context bios that they\'ve stopped signaling anything except "I used a template":',
+      },
+      {
+        type: 'ul',
+        items: [
+          'Quotes — philosophers, rappers, "king/queen" phrasing',
+          'Height, age, or zodiac sign listed like a spec sheet',
+          'Mile counts or fitness stats with no context',
+          'Unverifiable titles ("Entrepreneur / CEO / Visionary") with nothing backing them up',
+          '"DM for collab" with no audience to justify it',
+          '"Don\'t DM me unless you\'re serious"',
+          'Religious or political signaling in a two-line bio',
+          'Availability language — "Single," "DTF," "looking for my person"',
+        ],
+      },
+      { type: 'h2', text: "Coverage mistakes: what's missing entirely" },
+      {
+        type: 'p',
+        text: "Highlights left on their default gray-circle state, or empty. No Reels or video content anywhere, on a platform where that increasingly shapes how a profile gets judged. Post captions that add nothing. None of these are single dealbreakers, but stacked together they make a profile read as thin — and thinness reads as low effort, whether or not that's fair.",
+      },
+      { type: 'h2', text: 'The staleness problem' },
+      {
+        type: 'p',
+        text: "A bio or grid that hasn't changed in a long stretch signals something on its own, independent of whether any individual photo or line is fine. It doesn't need constant updates — but if you can't remember the last time you touched either, that's worth five minutes before it costs you a match.",
+      },
+      {
+        type: 'quote',
+        text: 'None of these mistakes are disqualifying alone. Stacked together, they are.',
+      },
+      {
+        type: 'p',
+        text: "Catching all of this from the inside is genuinely hard — you know the context behind every photo and every bio line, which is exactly what makes it invisible to you and obvious to a stranger. Caliber's audit runs your actual profile against this full list: photos, bio, and coverage gaps, scored and specific.",
+      },
+    ],
+    related: ['instagram-bio-for-dating', 'instagram-photo-tips-single-men'],
   },
 ];
 
