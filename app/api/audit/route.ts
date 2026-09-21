@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { runProfileAudit, PhotoInput } from '@/lib/anthropic';
-import { dailyAuditLimit, getAuditsUsedToday, getEffectivePlan, getSubscriptionStatus } from '@/lib/rate-limit';
+import { canRunAudit, getEffectivePlan, getSubscriptionStatus } from '@/lib/rate-limit';
 import { checkBioStaleness } from '@/lib/bio-staleness';
 import { trackEvent } from '@/lib/analytics';
 
@@ -21,10 +21,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Sign in to run an audit.' }, { status: 401 });
   }
 
-  const plan = await getEffectivePlan(userId);
-  const limit = dailyAuditLimit(plan);
-  const usedToday = await getAuditsUsedToday(userId);
-  if (usedToday >= limit) {
+  const { allowed, reason } = await canRunAudit(userId);
+  if (!allowed) {
     // §4.11: a past_due user needs to know *why* they're blocked -- a
     // billing problem, not the free-tier wall -- distinctly from a free
     // user's generic upgrade nudge.
@@ -38,12 +36,19 @@ export async function POST(req: NextRequest) {
         { status: 429 }
       );
     }
+    if (reason === 'daily_cap') {
+      return NextResponse.json(
+        { error: "You've hit today's audit limit. Try again tomorrow." },
+        { status: 429 }
+      );
+    }
+    const plan = await getEffectivePlan(userId);
     return NextResponse.json(
       {
         error:
           plan === 'paid'
-            ? `You've used all ${limit} audits for today. Try again tomorrow.`
-            : `You've used your free audit for today (${limit}/day on the free plan). Try again tomorrow or upgrade for more.`,
+            ? "You've used all your tokens for this billing period. They refresh when your subscription renews."
+            : "You've used your free token. Upgrade for 20 audits a month.",
         upgrade: plan !== 'paid',
       },
       { status: 429 }

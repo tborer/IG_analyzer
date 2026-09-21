@@ -81,12 +81,14 @@ the remaining SEO work), see
 - Change password (current password required) from `/dashboard/settings`.
 
 **Rate limiting**
-- Per-user daily audit cap: 1/day on `free`, 5/day on `paid`
-  (`lib/rate-limit.ts`). Entitlement resolves Stripe's
-  `subscription_status` against the local `plan` flag, so an `active`
-  subscription grants paid access and a `past_due` one keeps it until the
-  paid-through date lapses. Returns 429 with a plan-appropriate message
-  when exceeded.
+- Token model (2026-09-21, replacing a flat daily cap): a signed-up user
+  gets one free token, granted once at signup and never reset. A paid
+  subscriber gets 20 tokens, reset on every successful Stripe invoice
+  (`lib/rate-limit.ts`). Usage is derived by counting `audits` rows since
+  `token_period_start` rather than a decremented counter, avoiding
+  read-then-write races. A small daily cap (10/day) applies independently
+  of token balance, purely as an abuse guard. Returns 429 with a
+  plan-appropriate message when exceeded.
 
 **Dashboard**
 - `/dashboard` — submit a new audit and view the rendered result; shows a
@@ -322,11 +324,14 @@ production build), `npm run lint` (Next's ESLint config).
 
 Defined in `schema.sql`:
 
-- `users` — id, email, password_hash, plan (`free` or `paid`),
-  stripe_customer_id, stripe_subscription_id, subscription_status,
-  current_period_end (all written by the Stripe webhook),
-  email_verified_at (nullable), sessions_invalidated_at (nullable —
-  session-revocation cutoff), created_at.
+- `users` — id, email, password_hash, plan (`free` or `paid` — manual
+  admin override, unlimited when `paid`), stripe_customer_id,
+  stripe_subscription_id, subscription_status, current_period_end (all
+  written by the Stripe webhook), token_allotment / token_period_start
+  (the current period's audit token grant and when it started — see
+  Rate limiting below), email_verified_at (nullable),
+  sessions_invalidated_at (nullable — session-revocation cutoff),
+  created_at.
 - `audits` — id, user_id, bio_text, photo_count, result (json text),
   transcribed_bio, created_at. `transcribed_bio` is the bio exactly as read
   by the model each audit, kept only to detect an unchanged bio across
@@ -342,9 +347,9 @@ Photos themselves are **not** stored — they're sent to the Anthropic API for
 analysis and discarded. Only the generated JSON result is persisted, keeping
 the DB footprint intentionally small.
 
-`plan` and Stripe's `subscription_status` together gate the daily audit cap
-(see below) — a paid Stripe subscription grants access, and `plan` remains
-available as a manual override for comped or admin-granted accounts:
+`plan` remains available as a manual override for comped or admin-granted
+accounts — a user with `plan = 'paid'` gets unlimited audits, distinct from
+a normal paid subscriber's 20-token allotment:
 
 ```sql
 update users set plan = 'paid' where email = 'someone@example.com';
@@ -352,10 +357,14 @@ update users set plan = 'paid' where email = 'someone@example.com';
 
 ## Rate limiting
 
-`/api/audit` enforces a per-user daily cap based on `users.plan`: **1/day on
-free, 5/day on paid** (`lib/rate-limit.ts`). Exceeding it returns a 429 with
-a message telling the user when to come back. Login attempts are separately
-throttled by email and IP (`lib/login-rate-limit.ts`).
+`/api/audit` enforces a token balance, not a flat cap: **1 free token,
+granted once at signup; 20 tokens/month while subscribed, reset on every
+successful Stripe invoice** (`lib/rate-limit.ts`). A user's remaining
+balance is derived by counting `audits` rows since their
+`token_period_start`, not a mutable counter. A 10/day cap applies
+independently, purely as an abuse guard against burst usage. Exceeding
+either returns a 429 with a message telling the user why. Login attempts
+are separately throttled by email and IP (`lib/login-rate-limit.ts`).
 
 ## Account
 

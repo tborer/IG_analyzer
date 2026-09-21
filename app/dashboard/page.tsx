@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getCurrentUserId } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { getTokenBalance } from '@/lib/rate-limit';
 import DashboardNav from '@/components/DashboardNav';
 import UploadForm from '@/components/UploadForm';
 import VerifyEmailBanner from '@/components/VerifyEmailBanner';
@@ -19,13 +20,19 @@ export default async function DashboardPage() {
     [userId]
   );
   const isVerified = Boolean(rows[0]?.email_verified_at);
+  const tokenBalance = await getTokenBalance(userId);
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-12 sm:py-16">
       <DashboardNav />
       {!isVerified && <VerifyEmailBanner />}
       <p className="eyebrow text-brass mb-3">New audit</p>
-      <h1 className="font-display text-3xl mb-10">Let&apos;s look at your profile.</h1>
+      <h1 className="font-display text-3xl mb-3">Let&apos;s look at your profile.</h1>
+      <p className="eyebrow text-mist mb-10">
+        {tokenBalance === null
+          ? 'Unlimited audits'
+          : `${tokenBalance} audit${tokenBalance === 1 ? '' : 's'} remaining this period`}
+      </p>
       <UploadForm />
     </main>
   );

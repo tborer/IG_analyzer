@@ -57,13 +57,13 @@ describe('UploadForm', () => {
     expect(submitButton).toBeDisabled();
   });
 
-  it('renders an upgrade link when the daily cap is hit (§4.11)', async () => {
+  it('renders an upgrade link when tokens run out (§4.11)', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: false,
         status: 429,
-        json: () => Promise.resolve({ error: "You've used your free audit for today.", upgrade: true }),
+        json: () => Promise.resolve({ error: "You've used your free token.", upgrade: true }),
       })
     );
     const user = userEvent.setup();

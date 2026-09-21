@@ -71,8 +71,8 @@ describe('POST /api/auth/signup', () => {
     expect(res.status).toBe(200);
     expect(res.cookies.get('session')?.value).toBeTruthy();
     expect(query).toHaveBeenCalledWith(
-      'insert into users (id, email, password_hash) values (?, ?, ?)',
-      expect.arrayContaining(['new@example.com'])
+      'insert into users (id, email, password_hash, token_allotment, token_period_start) values (?, ?, ?, ?, ?)',
+      expect.arrayContaining(['new@example.com', 1])
     );
   });
 });
