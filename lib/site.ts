@@ -12,3 +12,7 @@ export const SITE_URL = (() => {
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return 'http://localhost:3000';
 })();
+
+// Display-only — must match the monthly Price actually configured in Stripe
+// (STRIPE_PRICE_ID_MONTHLY). Update this alongside that price if it changes.
+export const PAID_PLAN_PRICE = '19.99';

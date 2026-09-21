@@ -4,7 +4,7 @@ import PageViewTracker from '@/components/PageViewTracker';
 import TrackedCtaLink from '@/components/TrackedCtaLink';
 import WaitlistModal from '@/components/WaitlistModal';
 import ContactModal from '@/components/ContactModal';
-import { SITE_NAME, SITE_URL } from '@/lib/site';
+import { SITE_NAME, SITE_URL, PAID_PLAN_PRICE } from '@/lib/site';
 import { getAllBlogPosts } from '@/lib/blog';
 
 const FAQ = [
@@ -51,6 +51,7 @@ const jsonLd = {
         {
           '@type': 'Offer',
           name: 'Paid',
+          price: PAID_PLAN_PRICE,
           priceCurrency: 'USD',
           description: '5 audits per day, for tracking changes over time.',
         },
@@ -89,6 +90,7 @@ const jsonLd = {
 export default function LandingPage() {
   const recentPosts = getAllBlogPosts().slice(0, 3);
   const waitlistEnabled = process.env.ENABLE_WAITLIST === 'true';
+  const stripePortalUrl = process.env.STRIPE_CUSTOMER_PORTAL_URL;
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 sm:py-24">
@@ -260,7 +262,10 @@ export default function LandingPage() {
         <div className="grid sm:grid-cols-2 gap-6">
           <div className="border border-hair rounded-lg bg-inkraised p-6">
             <p className="eyebrow text-mist mb-2">Free</p>
-            <p className="font-display text-2xl mb-4">1 audit / day</p>
+            <p className="font-display text-2xl mb-1">
+              $0<span className="text-base font-body text-bone/50">/mo</span>
+            </p>
+            <p className="eyebrow text-mist mb-4">1 audit / day</p>
             <p className="text-sm text-bone/70 leading-relaxed mb-6">
               The full audit, no card required — one profile review per day.
             </p>
@@ -275,7 +280,10 @@ export default function LandingPage() {
           </div>
           <div className="border border-brass/40 rounded-lg bg-brass/5 p-6">
             <p className="eyebrow text-brass mb-2">Paid</p>
-            <p className="font-display text-2xl mb-4">5 audits / day</p>
+            <p className="font-display text-2xl mb-1">
+              ${PAID_PLAN_PRICE}<span className="text-base font-body text-bone/50">/mo</span>
+            </p>
+            <p className="eyebrow text-mist mb-4">5 audits / day</p>
             <p className="text-sm text-bone/70 leading-relaxed mb-6">
               Track your progress as you make changes, or audit more than one profile — five
               runs a day instead of one.
@@ -349,6 +357,11 @@ export default function LandingPage() {
           <Link href="/terms" className="hover:text-bone transition-colors">
             Terms
           </Link>
+          {stripePortalUrl && (
+            <a href={stripePortalUrl} className="hover:text-bone transition-colors">
+              Manage billing
+            </a>
+          )}
           <ContactModal />
         </nav>
       </footer>

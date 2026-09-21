@@ -1705,6 +1705,104 @@ Named explicitly so a later session doesn't quietly expand the work:
 
 ---
 
+## 6. Email capture / lead magnet
+
+**Problem.** Landing-page visitors who don't sign up leave with no way to
+re-engage them. The only existing email-capture path is the waitlist
+(`app/api/waitlist/route.ts`, gated behind `ENABLE_WAITLIST`) — it isn't
+stored anywhere (just emailed to the owner via `lib/smtp.ts`), isn't tied
+to any incentive, and is meant for a not-yet-launched-feature signal, not
+general lead capture. (2026-09-21, user request: prompt visitors who are
+about to leave without signing up for an email.)
+
+### 6.1 Capture trigger and UI
+
+**Requirements.**
+- Reuse the existing `Modal` component pattern (see
+  `components/WaitlistModal.tsx`) for the popup itself — same form/submit/
+  error-state shape, new component (e.g. `components/LeadCaptureModal.tsx`).
+- Trigger: exit-intent (`mouseleave` at the top of the viewport) on
+  desktop. Exit-intent has no equivalent on touch devices — pick a mobile
+  fallback trigger (a scroll-depth threshold, e.g. 60-70% of the page, or
+  a time-on-page delay) rather than shipping desktop-only.
+- Suppress correctly: never show to a signed-in user; don't reshow every
+  visit after a dismissal (store a dismissed/submitted flag in
+  `localStorage`, per-viewer convenience only — this is not critical
+  state, consistent with how this app should treat browser storage);
+  don't reshow at all once the visitor has submitted an email or signed
+  up.
+- Fire a `lead_captured` Plausible event via the existing
+  `trackEvent()` helper (`lib/analytics.ts`), matching the
+  `viewed_landing`/`click_signup` pattern already in place.
+
+**Acceptance criteria.**
+- [ ] Modal triggers correctly on desktop exit-intent and via the chosen
+  mobile fallback.
+- [ ] Never shown to a signed-in user; never reshown after dismissal or
+  submission within a reasonable window (dismissal: ~7-30 days;
+  submission: permanent).
+- [ ] `lead_captured` event fires on successful submission.
+
+### 6.2 What's actually being offered — needs a decision
+
+**Problem.** "Prompt for an email before someone leaves" needs a reason
+for a stranger to hand over their email. The request didn't specify an
+incentive, and this app has no gated-PDF infrastructure today.
+
+**Requirements.** Lowest-risk MVP option, since it needs no new content
+production: frame the ask around content that already exists — e.g. "Get
+the Dating Profile Audit Checklist" pointing at the
+`dating-profile-audit-checklist` blog post (`lib/blog.ts`), rather than
+promising a new downloadable asset that doesn't exist yet. If the
+business wants a purpose-built lead magnet (a standalone PDF, a
+multi-email tip sequence), that's a content-production decision for a
+human, not an implementation detail — flag it rather than fabricating
+deliverables.
+
+**Acceptance criteria.**
+- [ ] Decision recorded here (or a dated note) on what the incentive
+  actually is, before this ships.
+- [ ] Modal copy matches the actual incentive — no promising something
+  that isn't delivered.
+
+### 6.3 Storage and delivery
+
+**Problem.** Unlike the waitlist (fire-and-forget email to the owner),
+captured leads need to be retained for later use (a future nurture
+send), not just surfaced once.
+
+**Requirements.**
+- New table in `schema.sql`, additive/idempotent per this repo's
+  convention (see `ensureColumn`/`create table if not exists` pattern in
+  `scripts/init-db.mjs`): something like
+  `lead_captures (id, email, source text, created_at)` — `source`
+  distinguishes this from the waitlist and from any future capture point.
+- New route `app/api/leads/route.ts` (separate from `/api/waitlist` —
+  different semantics, different table), reusing the same zod
+  email-validation pattern as `WaitlistSchema`.
+- For now, reuse `lib/smtp.ts`'s `sendOwnerNotification` for owner
+  visibility on new captures, same as the waitlist — don't build a
+  drip/nurture email sequence as part of this item; that's a distinct,
+  larger feature (a real ESP audience/broadcast setup) and explicitly out
+  of scope here unless separately requested.
+
+**Acceptance criteria.**
+- [ ] Captured emails persist to a real table, not just an owner
+  notification.
+- [ ] Duplicate submissions (same email twice) don't error or duplicate
+  rows — same idempotency expectation as the rest of this schema.
+
+### 6.4 Out of scope (for this section)
+
+- Automated multi-email nurture/drip sequences — a separate feature
+  requiring a real ESP audience/broadcast setup (Resend or otherwise),
+  not just email capture.
+- A purpose-built downloadable PDF/asset — only in scope once §6.2's
+  incentive decision lands on "build a new asset," not the blog-content
+  MVP option.
+
+---
+
 ## Suggested sequencing
 
 1. **Carried-over hardening (§1)** first — small, self-contained, and the
@@ -1724,3 +1822,7 @@ Named explicitly so a later session doesn't quietly expand the work:
    dependency-free modules that can be built and tested against fixtures
    immediately. If §4 ships first, §5's "detailed" depth mode becomes the
    clearest paid-plan upsell the product has.
+6. **Email capture / lead magnet (§6)** — independent of the above, can run
+   any time. §6.2's incentive decision should land before §6.1/§6.3 ship,
+   since the modal copy and the "why" for capturing the email both depend
+   on it.

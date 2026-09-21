@@ -69,6 +69,10 @@ export default async function BlogPostPage({ params }: { params: PageParams }) {
   const post = getBlogPostBySlug(slug);
   if (!post) notFound();
 
+  const relatedPosts = (post.related ?? [])
+    .map((relatedSlug) => getBlogPostBySlug(relatedSlug))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -116,6 +120,23 @@ export default async function BlogPostPage({ params }: { params: PageParams }) {
         <h1 className="font-display text-3xl sm:text-4xl leading-[1.1] mb-8">{post.title}</h1>
         <div>{post.body.map(renderBlock)}</div>
       </article>
+
+      {relatedPosts.length > 0 && (
+        <div className="mt-16 border-t border-hair pt-8">
+          <p className="eyebrow text-brass mb-4">Related reading</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {relatedPosts.map((related) => (
+              <Link
+                key={related.slug}
+                href={`/blog/${related.slug}`}
+                className="block border border-hair rounded-lg p-4 hover:border-brass/40 transition-colors"
+              >
+                <h3 className="font-display text-sm leading-snug">{related.title}</h3>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-16 border-t border-hair pt-8 flex flex-col items-start gap-4">
         <p className="text-bone/75 text-sm leading-relaxed max-w-md">
