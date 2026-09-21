@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 };
 
 export default function LoginPage() {
+  const stripePortalUrl = process.env.STRIPE_CUSTOMER_PORTAL_URL;
+
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 sm:py-24">
       <Link href="/" className="font-display text-lg tracking-tight mb-16 inline-block">
@@ -26,6 +28,14 @@ export default function LoginPage() {
           Sign up
         </Link>
       </p>
+      {stripePortalUrl && (
+        <p className="text-sm text-mist mt-8 pt-8 border-t border-hair">
+          Can&apos;t get in but need to manage your subscription?{' '}
+          <a href={stripePortalUrl} className="text-brass hover:underline">
+            Manage billing directly
+          </a>
+        </p>
+      )}
     </main>
   );
 }

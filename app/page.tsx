@@ -90,6 +90,7 @@ const jsonLd = {
 export default function LandingPage() {
   const recentPosts = getAllBlogPosts().slice(0, 3);
   const waitlistEnabled = process.env.ENABLE_WAITLIST === 'true';
+  const stripePortalUrl = process.env.STRIPE_CUSTOMER_PORTAL_URL;
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 sm:py-24">
@@ -356,6 +357,11 @@ export default function LandingPage() {
           <Link href="/terms" className="hover:text-bone transition-colors">
             Terms
           </Link>
+          {stripePortalUrl && (
+            <a href={stripePortalUrl} className="hover:text-bone transition-colors">
+              Manage billing
+            </a>
+          )}
           <ContactModal />
         </nav>
       </footer>
