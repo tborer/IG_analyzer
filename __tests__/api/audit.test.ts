@@ -11,10 +11,9 @@ vi.mock('@/lib/auth', async (importOriginal) => {
 });
 
 vi.mock('@/lib/rate-limit', () => ({
-  dailyAuditLimit: vi.fn(),
+  canRunAudit: vi.fn(),
   getEffectivePlan: vi.fn(),
   getSubscriptionStatus: vi.fn(),
-  getAuditsUsedToday: vi.fn(),
 }));
 
 vi.mock('@/lib/anthropic', () => ({
@@ -34,10 +33,8 @@ function formRequest(form: FormData) {
 }
 
 async function allowRateLimit() {
-  const { dailyAuditLimit, getEffectivePlan, getAuditsUsedToday } = await import('@/lib/rate-limit');
-  vi.mocked(getEffectivePlan).mockResolvedValue('free');
-  vi.mocked(dailyAuditLimit).mockReturnValue(1);
-  vi.mocked(getAuditsUsedToday).mockResolvedValue(0);
+  const { canRunAudit } = await import('@/lib/rate-limit');
+  vi.mocked(canRunAudit).mockResolvedValue({ allowed: true });
 }
 
 describe('POST /api/audit', () => {
@@ -50,15 +47,13 @@ describe('POST /api/audit', () => {
     expect(res.status).toBe(401);
   });
 
-  it('blocks the request once the daily cap is used up', async () => {
+  it('blocks the request once the free token is used up', async () => {
     const { getCurrentUserId } = await import('@/lib/auth');
-    const { dailyAuditLimit, getEffectivePlan, getSubscriptionStatus, getAuditsUsedToday } =
-      await import('@/lib/rate-limit');
+    const { canRunAudit, getEffectivePlan, getSubscriptionStatus } = await import('@/lib/rate-limit');
     vi.mocked(getCurrentUserId).mockResolvedValueOnce('user-1');
-    vi.mocked(getEffectivePlan).mockResolvedValueOnce('free');
+    vi.mocked(canRunAudit).mockResolvedValueOnce({ allowed: false, reason: 'no_tokens' });
     vi.mocked(getSubscriptionStatus).mockResolvedValueOnce(null);
-    vi.mocked(dailyAuditLimit).mockReturnValueOnce(1);
-    vi.mocked(getAuditsUsedToday).mockResolvedValueOnce(1);
+    vi.mocked(getEffectivePlan).mockResolvedValueOnce('free');
     const { POST } = await import('@/app/api/audit/route');
 
     const res = await POST(formRequest(new FormData()));
@@ -68,15 +63,27 @@ describe('POST /api/audit', () => {
     expect(body.upgrade).toBe(true);
   });
 
+  it('blocks the request once the daily abuse cap is hit, even with tokens left', async () => {
+    const { getCurrentUserId } = await import('@/lib/auth');
+    const { canRunAudit, getSubscriptionStatus } = await import('@/lib/rate-limit');
+    vi.mocked(getCurrentUserId).mockResolvedValueOnce('user-1');
+    vi.mocked(canRunAudit).mockResolvedValueOnce({ allowed: false, reason: 'daily_cap' });
+    vi.mocked(getSubscriptionStatus).mockResolvedValueOnce(null);
+    const { POST } = await import('@/app/api/audit/route');
+
+    const res = await POST(formRequest(new FormData()));
+    const body = await res.json();
+
+    expect(res.status).toBe(429);
+    expect(body.error).toMatch(/today's audit limit/i);
+  });
+
   it('gives a past_due user a billing-specific message, not the generic free-tier one', async () => {
     const { getCurrentUserId } = await import('@/lib/auth');
-    const { dailyAuditLimit, getEffectivePlan, getSubscriptionStatus, getAuditsUsedToday } =
-      await import('@/lib/rate-limit');
+    const { canRunAudit, getSubscriptionStatus } = await import('@/lib/rate-limit');
     vi.mocked(getCurrentUserId).mockResolvedValueOnce('user-1');
-    vi.mocked(getEffectivePlan).mockResolvedValueOnce('free');
+    vi.mocked(canRunAudit).mockResolvedValueOnce({ allowed: false, reason: 'no_tokens' });
     vi.mocked(getSubscriptionStatus).mockResolvedValueOnce('past_due');
-    vi.mocked(dailyAuditLimit).mockReturnValueOnce(1);
-    vi.mocked(getAuditsUsedToday).mockResolvedValueOnce(1);
     const { POST } = await import('@/app/api/audit/route');
 
     const res = await POST(formRequest(new FormData()));

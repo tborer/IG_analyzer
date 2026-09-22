@@ -39,6 +39,8 @@ try {
   await ensureColumn('users', 'stripe_subscription_id', 'TEXT');
   await ensureColumn('users', 'email_verified_at', 'TEXT');
   await ensureColumn('users', 'sessions_invalidated_at', 'TEXT');
+  await ensureColumn('users', 'token_allotment', 'INTEGER');
+  await ensureColumn('users', 'token_period_start', 'TEXT');
 
   await ensureColumn('audits', 'transcribed_bio', 'TEXT');
 

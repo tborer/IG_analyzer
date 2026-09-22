@@ -9,6 +9,15 @@ CREATE TABLE IF NOT EXISTS users (
   current_period_end TEXT, -- ISO datetime
   email_verified_at TEXT, -- ISO datetime, null until verified
   sessions_invalidated_at TEXT, -- ISO datetime, tokens issued before this are rejected
+  -- Audit token model (2026-09-21): the current period's total audits
+  -- allowed, and when that period started. Usage is derived by counting
+  -- `audits` rows since token_period_start, not a decremented counter --
+  -- avoids read-then-write races, matches this schema's existing
+  -- audits-table-as-source-of-truth pattern. Signup grants a one-time
+  -- free token (period_start = account creation, never reset again);
+  -- a paid subscription resets both on every successful invoice.
+  token_allotment INTEGER,
+  token_period_start TEXT, -- ISO datetime
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

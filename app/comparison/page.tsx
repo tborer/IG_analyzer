@@ -14,7 +14,7 @@ const ROWS: [string, string, string][] = [
   ['What it\'s scored against', 'Dating-profile photo archetypes and bio structure', 'Usually a generic attractiveness/quality score'],
   ['Bio review', 'Full bio audit — red flags, archetype fit, staleness', 'Not typically covered'],
   ['Coverage gaps', 'Flags missing photo types and profile sections', 'Only rates what you already uploaded'],
-  ['Free tier', '1 full audit per day, no card required', 'Varies — often paywalled after the first use'],
+  ['Free tier', '1 full audit to try, no card required', 'Varies — often paywalled after the first use'],
 ];
 
 export default function ComparisonPage() {

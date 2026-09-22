@@ -4,6 +4,7 @@ import { query } from '@/lib/db';
 import { hashPassword, createSessionToken, SESSION_COOKIE, sessionCookieOptions } from '@/lib/auth';
 import { trackEvent } from '@/lib/analytics';
 import { sendVerificationEmail } from '@/lib/verification';
+import { FREE_TOKEN_GRANT } from '@/lib/rate-limit';
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json().catch(() => ({}));
@@ -26,11 +27,12 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await hashPassword(password);
   const userId = randomUUID();
-  await query('insert into users (id, email, password_hash) values (?, ?, ?)', [
-    userId,
-    normalizedEmail,
-    passwordHash,
-  ]);
+  // One-time free token: period_start = account creation, never reset
+  // again for a non-subscribing user (see lib/rate-limit.ts).
+  await query(
+    'insert into users (id, email, password_hash, token_allotment, token_period_start) values (?, ?, ?, ?, ?)',
+    [userId, normalizedEmail, passwordHash, FREE_TOKEN_GRANT, new Date().toISOString()]
+  );
 
   // Soft nudge only (§1.5): a slow/failed verification email must never
   // block account creation -- unverified accounts stay fully usable.

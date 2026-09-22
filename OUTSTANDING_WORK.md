@@ -1022,6 +1022,21 @@ a Stripe Billing Portal session with `return_url` back to
 
 ### 4.6 Gate on `subscription_status`, not just `plan`
 
+**2026-09-21 update:** `getEffectivePlan`/grace-period logic below shipped
+as described and remains the source for the "Plan" label and past_due
+messaging. However, actual audit *access* no longer runs through it --
+the whole flat-cap model (§4.7 mentions of "current effective plan"
+gating usage) was replaced by a token-balance model per user request:
+signup grants one free token (never reset), a paid subscription gets 20
+tokens reset on every successful Stripe invoice, and access is gated by
+`canRunAudit()`/`getTokenBalance()` in `lib/rate-limit.ts`. See that
+file's doc comments for the full design (why token usage is derived from
+counting `audits` rows rather than a decremented counter, the past_due
+interaction, the plan='paid' unlimited admin override, and the
+independent 10/day abuse-cap guard). §4.6/4.7's acceptance criteria below
+are kept for historical context but no longer describe current gating
+behavior.
+
 **Requirements.** `lib/rate-limit.ts`'s `getUserPlan` currently reads
 `plan` directly. Add `getEffectivePlan(userId)` that:
 - Returns `'paid'` if `subscription_status === 'active'`.

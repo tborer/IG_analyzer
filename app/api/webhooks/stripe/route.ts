@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { getStripeClient } from '@/lib/stripe';
 import { query } from '@/lib/db';
+import { PAID_TOKEN_ALLOTMENT } from '@/lib/rate-limit';
 
 function customerIdOf(customer: string | { id: string } | null): string | null {
   if (!customer) return null;
@@ -61,8 +62,8 @@ export async function POST(req: NextRequest) {
         typeof session.subscription === 'string' ? session.subscription : (session.subscription?.id ?? null);
       if (userId && customerId) {
         await query(
-          'update users set stripe_customer_id = ?, stripe_subscription_id = ?, subscription_status = ? where id = ?',
-          [customerId, subscriptionId, 'active', userId]
+          'update users set stripe_customer_id = ?, stripe_subscription_id = ?, subscription_status = ?, token_allotment = ?, token_period_start = ? where id = ?',
+          [customerId, subscriptionId, 'active', PAID_TOKEN_ALLOTMENT, new Date().toISOString(), userId]
         );
       } else {
         console.error('checkout.session.completed missing userId or customerId', event.id);
@@ -88,10 +89,32 @@ export async function POST(req: NextRequest) {
       const subscription = event.data.object as Stripe.Subscription;
       const customerId = customerIdOf(subscription.customer);
       if (customerId) {
-        await query('update users set subscription_status = ? where stripe_customer_id = ?', [
-          'canceled',
-          customerId,
-        ]);
+        // This event fires once the subscription has actually ended (not
+        // when a cancellation is merely scheduled), so the current period
+        // is genuinely over -- revoke the paid token allotment now rather
+        // than leaving a stale balance around.
+        await query(
+          'update users set subscription_status = ?, token_allotment = ?, token_period_start = ? where stripe_customer_id = ?',
+          ['canceled', 0, new Date().toISOString(), customerId]
+        );
+      }
+      break;
+    }
+
+    case 'invoice.payment_succeeded': {
+      const invoice = event.data.object as Stripe.Invoice;
+      const customerId = customerIdOf(invoice.customer);
+      if (customerId) {
+        // This app only ever creates subscription-mode Checkout Sessions
+        // (see app/api/billing/checkout/route.ts), so every invoice here
+        // is a subscription invoice -- safe to reset the token allotment
+        // unconditionally. Also fires for the very first invoice of a new
+        // subscription, redundantly with checkout.session.completed above
+        // -- harmless, both set the same values.
+        await query(
+          'update users set token_allotment = ?, token_period_start = ? where stripe_customer_id = ?',
+          [PAID_TOKEN_ALLOTMENT, new Date().toISOString(), customerId]
+        );
       }
       break;
     }

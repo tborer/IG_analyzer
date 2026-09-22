@@ -43,10 +43,10 @@ describe('POST /api/webhooks/stripe -- idempotency', () => {
 
     expect(res.status).toBe(200);
     expect(body.duplicate).toBeUndefined();
-    expect(query).toHaveBeenCalledWith('update users set subscription_status = ? where stripe_customer_id = ?', [
-      'canceled',
-      'cus_1',
-    ]);
+    expect(query).toHaveBeenCalledWith(
+      'update users set subscription_status = ?, token_allotment = ?, token_period_start = ? where stripe_customer_id = ?',
+      ['canceled', 0, expect.any(String), 'cus_1']
+    );
   });
 
   it('does not reprocess an event whose id was already claimed', async () => {
@@ -109,8 +109,27 @@ describe('POST /api/webhooks/stripe -- event handling', () => {
     await POST(request());
 
     expect(query).toHaveBeenCalledWith(
-      'update users set stripe_customer_id = ?, stripe_subscription_id = ?, subscription_status = ? where id = ?',
-      ['cus_1', 'sub_1', 'active', 'user-1']
+      'update users set stripe_customer_id = ?, stripe_subscription_id = ?, subscription_status = ?, token_allotment = ?, token_period_start = ? where id = ?',
+      ['cus_1', 'sub_1', 'active', 20, expect.any(String), 'user-1']
+    );
+  });
+
+  it('invoice.payment_succeeded resets the token allotment for the new period', async () => {
+    const { query } = await import('@/lib/db');
+    constructEvent.mockReturnValueOnce({
+      id: 'evt_invoice_succeeded',
+      type: 'invoice.payment_succeeded',
+      data: { object: { customer: 'cus_1' } },
+    });
+    vi.mocked(query).mockResolvedValueOnce([]); // claim
+    vi.mocked(query).mockResolvedValueOnce([]); // update
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+
+    await POST(request());
+
+    expect(query).toHaveBeenCalledWith(
+      'update users set token_allotment = ?, token_period_start = ? where stripe_customer_id = ?',
+      [20, expect.any(String), 'cus_1']
     );
   });
 

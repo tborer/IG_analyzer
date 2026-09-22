@@ -25,8 +25,8 @@ const FAQ = [
     a: 'No. Screenshots are analyzed and then discarded — only the written audit is saved to your account, so you can look back at it later.',
   },
   {
-    q: 'Do I need the paid plan to track changes over time?',
-    a: "No — the free plan already saves every audit to your history, so you can compare runs. Paid just raises the daily limit from one audit to five, useful if you want to re-check a profile the same day after making changes, or you're auditing more than one profile.",
+    q: 'What do I get with the free plan versus paid?',
+    a: 'Every account gets one free audit to try the tool, no card required. Paid is $19.99/mo for 20 audits a month — useful if you want to re-check a profile after making changes, or you\'re auditing more than one profile. Every audit saves to your history either way, so you can compare runs over time.',
   },
 ];
 
@@ -46,14 +46,14 @@ const jsonLd = {
           name: 'Free',
           price: '0',
           priceCurrency: 'USD',
-          description: '1 audit per day, no card required.',
+          description: '1 free audit to try, no card required.',
         },
         {
           '@type': 'Offer',
           name: 'Paid',
           price: PAID_PLAN_PRICE,
           priceCurrency: 'USD',
-          description: '5 audits per day, for tracking changes over time.',
+          description: '20 audits a month, for tracking changes over time.',
         },
       ],
     },
@@ -140,7 +140,7 @@ export default function LandingPage() {
           >
             Get your free audit
           </TrackedCtaLink>
-          <p className="eyebrow text-mist mt-3">Free audit resets daily — no card required</p>
+          <p className="eyebrow text-mist mt-3">1 free audit to start — no card required</p>
         </div>
         <div className="shrink-0 flex flex-col items-center gap-2 border border-hair rounded-lg bg-inkraised p-8">
           <ScoreDial score={82} size={120} />
@@ -262,12 +262,10 @@ export default function LandingPage() {
         <div className="grid sm:grid-cols-2 gap-6">
           <div className="border border-hair rounded-lg bg-inkraised p-6">
             <p className="eyebrow text-mist mb-2">Free</p>
-            <p className="font-display text-2xl mb-1">
-              $0<span className="text-base font-body text-bone/50">/mo</span>
-            </p>
-            <p className="eyebrow text-mist mb-4">1 audit / day</p>
+            <p className="font-display text-2xl mb-1">$0</p>
+            <p className="eyebrow text-mist mb-4">1 audit to try</p>
             <p className="text-sm text-bone/70 leading-relaxed mb-6">
-              The full audit, no card required — one profile review per day.
+              The full audit, no card required — one profile review to see what it finds.
             </p>
             <TrackedCtaLink
               href="/signup"
@@ -283,10 +281,10 @@ export default function LandingPage() {
             <p className="font-display text-2xl mb-1">
               ${PAID_PLAN_PRICE}<span className="text-base font-body text-bone/50">/mo</span>
             </p>
-            <p className="eyebrow text-mist mb-4">5 audits / day</p>
+            <p className="eyebrow text-mist mb-4">20 audits / month</p>
             <p className="text-sm text-bone/70 leading-relaxed mb-6">
-              Track your progress as you make changes, or audit more than one profile — five
-              runs a day instead of one.
+              Track your progress as you make changes, or audit more than one profile — 20
+              runs a month to work with instead of one.
             </p>
             <TrackedCtaLink
               href="/signup"

@@ -8,8 +8,8 @@ function uniqueEmail(prefix: string) {
 }
 
 // One continuous user journey, per §3.3 -- later scenarios (history,
-// password change, the daily cap) depend on state created by earlier ones
-// in the same run, same as a real user's session.
+// password change, the free-token limit) depend on state created by
+// earlier ones in the same run, same as a real user's session.
 test.describe.serial('golden path', () => {
   const email = uniqueEmail('e2e');
   const password = 'originalPassword123';
@@ -82,14 +82,14 @@ test.describe.serial('golden path', () => {
     await expect(page).toHaveURL(/\/dashboard$/);
   });
 
-  test('5. hitting the daily cap shows the 429 UX with an upgrade link', async () => {
-    // This user already used their one free audit in scenario 2.
+  test('5. running out of free tokens shows the 429 UX with an upgrade link', async () => {
+    // This user already used their one free token in scenario 2.
     await page.goto('/dashboard');
     await page.locator('input[type="file"]').setInputFiles(PHOTO);
     await expect(page.getByText('Screenshots (1/12)')).toBeVisible();
     await page.getByRole('button', { name: 'Run the audit' }).click();
 
-    await expect(page.getByText(/used your free audit for today/i)).toBeVisible();
+    await expect(page.getByText(/used your free token/i)).toBeVisible();
     await expect(page.getByRole('link', { name: 'Upgrade for more audits' })).toBeVisible();
   });
 
