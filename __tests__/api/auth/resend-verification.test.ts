@@ -15,9 +15,18 @@ vi.mock('@/lib/verification', () => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
+  process.env.ENABLE_EMAIL_VERIFICATION = 'true';
 });
 
 describe('POST /api/auth/resend-verification', () => {
+  it('returns 404 when email verification is disabled', async () => {
+    delete process.env.ENABLE_EMAIL_VERIFICATION;
+    const { POST } = await import('@/app/api/auth/resend-verification/route');
+
+    const res = await POST();
+    expect(res.status).toBe(404);
+  });
+
   it('rejects when signed out', async () => {
     const { getCurrentUserId } = await import('@/lib/auth');
     vi.mocked(getCurrentUserId).mockResolvedValueOnce(null);

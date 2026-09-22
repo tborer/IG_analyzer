@@ -306,6 +306,12 @@ run the app. Stripe vars aren't used unless `ENABLE_STRIPE=true`. The SMTP
 vars (`SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_FROM`,
 `CONTACT_TO_EMAIL`) are only needed to exercise the waitlist or contact
 forms; the waitlist button itself is hidden unless `ENABLE_WAITLIST=true`.
+Email verification (the signup email, the dashboard nudge banner, the
+resend endpoint) is off by default — not needed for MVP — and only runs
+with `ENABLE_EMAIL_VERIFICATION=true`; unverified accounts are always
+fully usable either way. The platform picker (TikTok/X/Facebook/LinkedIn/
+Other) is likewise off by default, locking the app to Instagram only,
+until `ENABLE_OTHER_PLATFORMS=true`.
 
 Create the Turso database first if you haven't:
 
@@ -348,11 +354,16 @@ analysis and discarded. Only the generated JSON result is persisted, keeping
 the DB footprint intentionally small.
 
 `plan` remains available as a manual override for comped or admin-granted
-accounts — a user with `plan = 'paid'` gets unlimited audits, distinct from
-a normal paid subscriber's 20-token allotment:
+accounts, but it only affects the "Plan" label and messaging shown in the
+UI — it does **not** grant unlimited audits, and there is deliberately no
+unlimited bypass anywhere in the token gating. To actually give an account
+audits without a real Stripe subscription, set the token columns directly,
+the same way a subscription would:
 
 ```sql
-update users set plan = 'paid' where email = 'someone@example.com';
+update users
+set plan = 'paid', token_allotment = 20, token_period_start = current_timestamp
+where email = 'someone@example.com';
 ```
 
 ## Rate limiting

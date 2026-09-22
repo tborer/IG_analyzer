@@ -97,20 +97,10 @@ describe('getTokenBalance', () => {
     expect(await getTokenBalance('nobody')).toBe(0);
   });
 
-  it('returns null (unlimited) for the legacy plan=paid admin override', async () => {
-    const { query } = await import('@/lib/db');
-    vi.mocked(query).mockResolvedValueOnce([
-      { plan: 'paid', token_allotment: 0, token_period_start: null },
-    ]);
-    const { getTokenBalance } = await import('@/lib/rate-limit');
-
-    expect(await getTokenBalance('user-1')).toBeNull();
-  });
-
   it('subtracts audits created since token_period_start from the allotment', async () => {
     const { query } = await import('@/lib/db');
     vi.mocked(query).mockResolvedValueOnce([
-      { plan: 'free', token_allotment: 20, token_period_start: '2026-09-01T00:00:00.000Z' },
+      { token_allotment: 20, token_period_start: '2026-09-01T00:00:00.000Z' },
     ]);
     vi.mocked(query).mockResolvedValueOnce([{ count: 7 }]);
     const { getTokenBalance } = await import('@/lib/rate-limit');
@@ -125,9 +115,20 @@ describe('getTokenBalance', () => {
   it('never returns a negative balance', async () => {
     const { query } = await import('@/lib/db');
     vi.mocked(query).mockResolvedValueOnce([
-      { plan: 'free', token_allotment: 1, token_period_start: '2026-09-01T00:00:00.000Z' },
+      { token_allotment: 1, token_period_start: '2026-09-01T00:00:00.000Z' },
     ]);
     vi.mocked(query).mockResolvedValueOnce([{ count: 5 }]);
+    const { getTokenBalance } = await import('@/lib/rate-limit');
+
+    expect(await getTokenBalance('user-1')).toBe(0);
+  });
+
+  it('does not treat the legacy plan=paid override as unlimited (regression)', async () => {
+    const { query } = await import('@/lib/db');
+    vi.mocked(query).mockResolvedValueOnce([
+      { token_allotment: 0, token_period_start: '2026-09-01T00:00:00.000Z' },
+    ]);
+    vi.mocked(query).mockResolvedValueOnce([{ count: 0 }]);
     const { getTokenBalance } = await import('@/lib/rate-limit');
 
     expect(await getTokenBalance('user-1')).toBe(0);
@@ -138,7 +139,7 @@ describe('canRunAudit', () => {
   it('allows a request when tokens remain and the daily cap is not hit', async () => {
     const { query } = await import('@/lib/db');
     vi.mocked(query).mockResolvedValueOnce([
-      { plan: 'free', token_allotment: 1, token_period_start: '2026-09-01T00:00:00.000Z' },
+      { token_allotment: 1, token_period_start: '2026-09-01T00:00:00.000Z' },
     ]);
     vi.mocked(query).mockResolvedValueOnce([{ count: 0 }]); // period usage
     vi.mocked(query).mockResolvedValueOnce([{ count: 0 }]); // today's usage
@@ -150,7 +151,7 @@ describe('canRunAudit', () => {
   it('blocks with reason no_tokens once the balance is exhausted', async () => {
     const { query } = await import('@/lib/db');
     vi.mocked(query).mockResolvedValueOnce([
-      { plan: 'free', token_allotment: 1, token_period_start: '2026-09-01T00:00:00.000Z' },
+      { token_allotment: 1, token_period_start: '2026-09-01T00:00:00.000Z' },
     ]);
     vi.mocked(query).mockResolvedValueOnce([{ count: 1 }]); // period usage == allotment
     const { canRunAudit } = await import('@/lib/rate-limit');
@@ -161,7 +162,7 @@ describe('canRunAudit', () => {
   it('blocks with reason daily_cap once 10 audits ran today, even with tokens left', async () => {
     const { query } = await import('@/lib/db');
     vi.mocked(query).mockResolvedValueOnce([
-      { plan: 'free', token_allotment: 20, token_period_start: '2026-09-01T00:00:00.000Z' },
+      { token_allotment: 20, token_period_start: '2026-09-01T00:00:00.000Z' },
     ]);
     vi.mocked(query).mockResolvedValueOnce([{ count: 5 }]); // period usage
     vi.mocked(query).mockResolvedValueOnce([{ count: 10 }]); // today's usage
@@ -170,14 +171,14 @@ describe('canRunAudit', () => {
     expect(await canRunAudit('user-1')).toEqual({ allowed: false, reason: 'daily_cap' });
   });
 
-  it('never blocks an unlimited (plan=paid override) user on token balance', async () => {
+  it('blocks a plan=paid account with no token_allotment set (regression)', async () => {
     const { query } = await import('@/lib/db');
     vi.mocked(query).mockResolvedValueOnce([
-      { plan: 'paid', token_allotment: 0, token_period_start: null },
+      { token_allotment: 0, token_period_start: '2026-09-01T00:00:00.000Z' },
     ]);
-    vi.mocked(query).mockResolvedValueOnce([{ count: 3 }]); // today's usage
+    vi.mocked(query).mockResolvedValueOnce([{ count: 0 }]); // period usage
     const { canRunAudit } = await import('@/lib/rate-limit');
 
-    expect(await canRunAudit('user-1')).toEqual({ allowed: true });
+    expect(await canRunAudit('user-1')).toEqual({ allowed: false, reason: 'no_tokens' });
   });
 });

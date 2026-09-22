@@ -4,6 +4,10 @@ import { query } from '@/lib/db';
 import { sendVerificationEmail } from '@/lib/verification';
 
 export async function POST() {
+  if (process.env.ENABLE_EMAIL_VERIFICATION !== 'true') {
+    return NextResponse.json({ error: 'Email verification is not enabled.' }, { status: 404 });
+  }
+
   const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json({ error: 'Sign in first.' }, { status: 401 });

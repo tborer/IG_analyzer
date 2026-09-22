@@ -17,9 +17,9 @@ export default function BillingSection({
   currentPeriodEnd: string | null;
   hasStripeCustomer: boolean;
   stripeEnabled: boolean;
-  // null balance = unlimited (legacy admin override) -- omit both to skip
-  // the display entirely (e.g. existing callers that don't pass them).
-  tokenBalance?: number | null;
+  // Omit both to skip the display entirely (e.g. existing callers that
+  // don't pass them).
+  tokenBalance?: number;
   tokenAllotment?: number;
 }) {
   const [loading, setLoading] = useState<'checkout' | 'portal' | null>(null);
@@ -44,11 +44,9 @@ export default function BillingSection({
       <p className="eyebrow text-mist mb-2">Plan</p>
       <p className="font-display text-lg mb-1">{effectivePlan === 'paid' ? 'Paid' : 'Free'}</p>
 
-      {typeof tokenAllotment === 'number' && tokenBalance !== undefined && (
+      {typeof tokenAllotment === 'number' && typeof tokenBalance === 'number' && (
         <p className="text-sm text-bone/70 mb-1">
-          {tokenBalance === null
-            ? 'Unlimited audits'
-            : `${tokenBalance} of ${tokenAllotment} audits remaining this period`}
+          {tokenBalance} of {tokenAllotment} audits remaining this period
         </p>
       )}
 

@@ -18,8 +18,9 @@ const INCLUDE_TIPS = [
   'Highlights or pinned content, if the platform has them',
 ];
 
-export default function UploadForm() {
-  const [platform, setPlatform] = useState(PLATFORMS[0]);
+export default function UploadForm({ otherPlatformsEnabled = false }: { otherPlatformsEnabled?: boolean }) {
+  const availablePlatforms = otherPlatformsEnabled ? PLATFORMS : [PLATFORMS[0]];
+  const [platform, setPlatform] = useState(availablePlatforms[0]);
   const [customPlatform, setCustomPlatform] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -118,25 +119,29 @@ export default function UploadForm() {
   return (
     <div className="space-y-8">
       <div>
-        <label className="eyebrow text-mist mb-3 block" htmlFor="platform">
-          Platform
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {PLATFORMS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPlatform(p)}
-              className={`eyebrow px-3 py-2 rounded-full border transition-colors ${
-                platform === p
-                  ? 'border-brass/60 text-brass bg-brass/10'
-                  : 'border-hair text-mist hover:text-bone'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
+        {otherPlatformsEnabled && (
+          <>
+            <label className="eyebrow text-mist mb-3 block" htmlFor="platform">
+              Platform
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {availablePlatforms.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPlatform(p)}
+                  className={`eyebrow px-3 py-2 rounded-full border transition-colors ${
+                    platform === p
+                      ? 'border-brass/60 text-brass bg-brass/10'
+                      : 'border-hair text-mist hover:text-bone'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         {platform === 'Other' && (
           <input
             type="text"

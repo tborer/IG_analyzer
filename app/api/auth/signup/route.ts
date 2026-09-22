@@ -36,9 +36,13 @@ export async function POST(req: NextRequest) {
 
   // Soft nudge only (§1.5): a slow/failed verification email must never
   // block account creation -- unverified accounts stay fully usable.
-  sendVerificationEmail(userId, normalizedEmail).catch((err) => {
-    console.error('Failed to send verification email:', err);
-  });
+  // Off entirely unless ENABLE_EMAIL_VERIFICATION=true -- not needed for
+  // MVP.
+  if (process.env.ENABLE_EMAIL_VERIFICATION === 'true') {
+    sendVerificationEmail(userId, normalizedEmail).catch((err) => {
+      console.error('Failed to send verification email:', err);
+    });
+  }
 
   trackEvent('signup_completed');
 

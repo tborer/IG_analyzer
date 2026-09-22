@@ -59,9 +59,13 @@ export async function POST(req: NextRequest) {
   const fileEntries = form.getAll('photos').filter((f): f is File => f instanceof File);
   const bio = form.get('bio');
   const bioText = typeof bio === 'string' && bio.trim() ? bio.trim().slice(0, 600) : undefined;
+  // Trust the client's platform value only when other platforms are
+  // actually enabled -- otherwise ignore it so the UI toggle can't be
+  // bypassed by crafting the request directly.
+  const otherPlatformsEnabled = process.env.ENABLE_OTHER_PLATFORMS === 'true';
   const platformRaw = form.get('platform');
   const platform =
-    typeof platformRaw === 'string' && platformRaw.trim()
+    otherPlatformsEnabled && typeof platformRaw === 'string' && platformRaw.trim()
       ? platformRaw.trim().slice(0, 40)
       : DEFAULT_PLATFORM;
 
