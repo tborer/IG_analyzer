@@ -62,7 +62,6 @@ export async function getSubscriptionStatus(userId: string): Promise<string | nu
 }
 
 interface TokenRow {
-  plan: string;
   token_allotment: number | null;
   token_period_start: string | null;
 }
@@ -72,18 +71,22 @@ interface TokenRow {
  * rows since token_period_start rather than a decremented counter --
  * avoids read-then-write races on concurrent requests and matches how
  * the rest of this schema treats `audits` as the append-only source of
- * truth for usage. Returns null for the legacy `plan = 'paid'` admin
- * override, which is treated as unlimited (distinct from a normal paid
- * subscriber's 20/period cap).
+ * truth for usage.
+ *
+ * Every user, however they became "paid" (a real Stripe subscription or
+ * the manual `plan = 'paid'` override), is gated by these same columns --
+ * there is deliberately no unlimited bypass. To grant an account the
+ * normal paid allotment without going through Stripe, set
+ * token_allotment/token_period_start directly (see README's manual
+ * plan-override note), not just `plan`.
  */
-export async function getTokenBalance(userId: string): Promise<number | null> {
+export async function getTokenBalance(userId: string): Promise<number> {
   const rows = await query<TokenRow>(
-    'select plan, token_allotment, token_period_start from users where id = ?',
+    'select token_allotment, token_period_start from users where id = ?',
     [userId]
   );
   const user = rows[0];
   if (!user) return 0;
-  if (user.plan === 'paid') return null;
 
   const allotment = user.token_allotment ?? 0;
   if (!user.token_period_start) return allotment;
@@ -100,7 +103,7 @@ export async function canRunAudit(
   userId: string
 ): Promise<{ allowed: boolean; reason?: 'no_tokens' | 'daily_cap' }> {
   const balance = await getTokenBalance(userId);
-  if (balance !== null && balance <= 0) {
+  if (balance <= 0) {
     return { allowed: false, reason: 'no_tokens' };
   }
 

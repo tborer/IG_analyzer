@@ -22,6 +22,7 @@ vi.mock('@/lib/anthropic', () => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
+  delete process.env.ENABLE_OTHER_PLATFORMS;
 });
 
 function photoFile(name = 'photo.jpg') {
@@ -118,6 +119,7 @@ describe('POST /api/audit', () => {
   });
 
   it('runs the audit and persists the result on success', async () => {
+    process.env.ENABLE_OTHER_PLATFORMS = 'true';
     const { getCurrentUserId } = await import('@/lib/auth');
     const { runProfileAudit } = await import('@/lib/anthropic');
     const { query } = await import('@/lib/db');
@@ -148,6 +150,28 @@ describe('POST /api/audit', () => {
       expect.stringContaining('insert into audits'),
       expect.arrayContaining(['user-1'])
     );
+  });
+
+  it('ignores a client-sent platform and forces Instagram when other platforms are disabled', async () => {
+    const { getCurrentUserId } = await import('@/lib/auth');
+    const { runProfileAudit } = await import('@/lib/anthropic');
+    const { query } = await import('@/lib/db');
+    vi.mocked(getCurrentUserId).mockResolvedValueOnce('user-1');
+    await allowRateLimit();
+    vi.mocked(runProfileAudit).mockResolvedValueOnce({
+      result: { overallScore: 80, headline: 'Solid set' },
+      transcribedBio: null,
+    } as never);
+    vi.mocked(query).mockResolvedValueOnce([]);
+    const { POST } = await import('@/app/api/audit/route');
+
+    const form = new FormData();
+    form.append('photos', photoFile());
+    form.append('platform', 'TikTok');
+
+    await POST(formRequest(form));
+
+    expect(runProfileAudit).toHaveBeenCalledWith(expect.any(Array), undefined, 'Instagram');
   });
 
   it('flags a bio that has been unchanged for the last few audits', async () => {

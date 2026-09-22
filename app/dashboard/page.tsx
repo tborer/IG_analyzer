@@ -21,19 +21,19 @@ export default async function DashboardPage() {
   );
   const isVerified = Boolean(rows[0]?.email_verified_at);
   const tokenBalance = await getTokenBalance(userId);
+  const verificationEnabled = process.env.ENABLE_EMAIL_VERIFICATION === 'true';
+  const otherPlatformsEnabled = process.env.ENABLE_OTHER_PLATFORMS === 'true';
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-12 sm:py-16">
       <DashboardNav />
-      {!isVerified && <VerifyEmailBanner />}
+      {verificationEnabled && !isVerified && <VerifyEmailBanner />}
       <p className="eyebrow text-brass mb-3">New audit</p>
       <h1 className="font-display text-3xl mb-3">Let&apos;s look at your profile.</h1>
       <p className="eyebrow text-mist mb-10">
-        {tokenBalance === null
-          ? 'Unlimited audits'
-          : `${tokenBalance} audit${tokenBalance === 1 ? '' : 's'} remaining this period`}
+        {tokenBalance} audit{tokenBalance === 1 ? '' : 's'} remaining this period
       </p>
-      <UploadForm />
+      <UploadForm otherPlatformsEnabled={otherPlatformsEnabled} />
     </main>
   );
 }
